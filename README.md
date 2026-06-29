@@ -195,12 +195,12 @@ const BASE_URL = 'http://your-api-server:8000/api/admin'
 
 | 平台 | 状态 |
 |------|------|
-| Android App | ✅ 当前支持 |
-| iOS App | 🔧 预留扩展 |
-| H5 (Web) | 🔧 预留扩展 |
-| 微信小程序 | 🔧 预留扩展 |
-| 支付宝小程序 | 🔧 预留扩展 |
-| 字节跳动小程序 | 🔧 预留扩展 |
+| Android App | ✅ 当前主要支持（`platformConfig.json` 已配置） |
+| H5 (Web) | ✅ 已配置支持（`manifest.json` 中已启用 history 路由模式） |
+| iOS App | 🔧 预留扩展（manifest 已配置，待测试） |
+| 微信小程序 | 🔧 预留扩展（manifest 已配置） |
+| 支付宝小程序 | 🔧 预留扩展（manifest 已配置） |
+| 字节跳动小程序 | 🔧 预留扩展（manifest 已配置） |
 
 ---
 
