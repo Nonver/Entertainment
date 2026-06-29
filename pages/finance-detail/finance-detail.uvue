@@ -1,0 +1,566 @@
+<template>
+	<view class="container">
+		<!-- 导航栏 -->
+		<view class="nav-bar">
+			<view class="back-btn" @click="goBack">
+				<image class="menu-arrow-icon" src="/static/svg/jt.png" mode="aspectFit" style="transform: rotate(180deg);" />
+			</view>
+			<text class="nav-title">资金明细</text>
+			<view class="nav-placeholder"></view>
+		</view>
+
+		<!-- 搜索栏 -->
+		<view class="search-bar">
+			<text class="search-icon">🔍</text>
+			<input class="search-input" type="text" placeholder="请输入代理id或昵称" v-model="searchKeyword"
+				@input="onSearchInput" />
+		</view>
+
+		<!-- 平台切换栏 -->
+		<view class="platform-bar">
+			<image class="platform-logo" :src="currentPlatform?.platformImg || '/static/logo.png'" mode="aspectFit" />
+			<text class="platform-name">{{ currentPlatform?.platformName || '加载中...' }}</text>
+			<view class="switch-btn" @click="showPlatformPicker = true">
+				<text class="switch-text">切换平台</text>
+			</view>
+		</view>
+
+		<!-- Tab 切换（双行布局） -->
+		<view class="tab-scroll">
+			<view class="tab-row">
+				<view v-for="(tab, index) in tabsRow1" :key="'r1-'+index" class="tab-item"
+					:class="{ 'tab-active': currentTab === index }" @click="switchTab(index)">
+					<text class="tab-text" :class="{ 'tab-text-active': currentTab === index }">{{ tab }}</text>
+				</view>
+			</view>
+			<view class="tab-row">
+				<view v-for="(tab, index) in tabsRow2" :key="'r2-'+index" class="tab-item"
+					:class="{ 'tab-active': currentTab === (index + tabsRow1.length) }" @click="switchTab(index + tabsRow1.length)">
+					<text class="tab-text" :class="{ 'tab-text-active': currentTab === (index + tabsRow1.length) }">{{ tab }}</text>
+				</view>
+			</view>
+		</view>
+
+		<!-- 资金列表 -->
+		<scroll-view class="list-container" scroll-y @scrolltolower="loadMore">
+			<view v-for="(item, index) in recordList" :key="item.uid" class="record-card">
+				<view class="record-row1">
+					<text class="record-type">{{ item.type_name }}{{ item.direction === 'in' ? '(收入)' : '(支出)' }}</text>
+					<text class="record-amount"
+						:class="item.direction === 'in' ? 'amount-in' : 'amount-out'">{{ item.direction === 'in' ? '+' : '-' }}{{ item.amount }}</text>
+				</view>
+				<view class="record-row2">
+					<text class="record-balance">编号：{{ item.order_no }}</text>
+					<text v-if="item.anchor_nickname" class="record-agent">主播：{{ item.anchor_nickname }}</text>
+				</view>
+				<view class="record-row3">
+					<text class="record-no">{{ item.user_nickname ? (item.user_nickname + '的') : '' }}{{ item.type_name }}</text>
+					<text class="record-time">{{ formatTime(item.created_at) }}</text>
+				</view>
+			</view>
+
+			<!-- 加载中 -->
+			<view v-if="loading && recordList.length === 0" class="empty-state">
+				<text class="empty-text">加载中...</text>
+			</view>
+			<!-- 空状态 -->
+			<view v-if="!loading && recordList.length === 0" class="empty-state">
+				<image class="empty-icon" src="/static/empty-list.png" mode="aspectFit" />
+				<text class="empty-text">暂无数据</text>
+			</view>
+			<!-- 没有更多了 -->
+			<view v-if="!loading && recordList.length > 0 && !hasMore" class="no-more">
+				<text class="no-more-text">没有更多了</text>
+			</view>
+		</scroll-view>
+
+		<!-- 切换平台弹窗 -->
+		<view v-if="showPlatformPicker" class="popup-mask" @click="showPlatformPicker = false">
+			<view class="popup-content" @click.stop>
+				<view class="popup-header">
+					<text class="popup-cancel" @click="showPlatformPicker = false">取消</text>
+					<text class="popup-title">切换平台</text>
+					<text class="popup-close" @click="showPlatformPicker = false">✕</text>
+				</view>
+				<scroll-view class="popup-list" scroll-y>
+					<view v-for="(platform, index) in platforms" :key="index" class="popup-item"
+						@click="selectPlatform(index)">
+						<image class="popup-item-logo" :src="platform.platformImg || '/static/logo.png'" mode="aspectFit" />
+						<text class="popup-item-name">{{ platform.platformName }}</text>
+					</view>
+				</scroll-view>
+			</view>
+		</view>
+	</view>
+</template>
+
+<script setup lang="uts">
+	import { ref, computed, onMounted } from "vue";
+	import { checkLogin } from "@/utils/auth.uts";
+	import {
+		getFundDetailApi,
+		getPlatformsApi,
+		type FundDetailItem,
+		type PlatformItem,
+	} from "@/utils/api.uts"
+
+	// ========== 平台数据 ==========
+	const platforms = ref<PlatformItem[]>([])
+	const currentPlatform = ref<PlatformItem | null>(null)
+	const showPlatformPicker = ref<boolean>(false)
+
+	// ========== 列表数据 ==========
+	const allRecords = ref<FundDetailItem[]>([])
+	const loading = ref<boolean>(false)
+	const currentPage = ref<number>(1)
+	const pageSize = 20
+	const total = ref<number>(0)
+	const hasMore = computed<boolean>(() : boolean => {
+		return allRecords.value.length < total.value
+	})
+
+	// ========== Tab（从 API 数据类型动态生成）==========
+	// ftype → 显示名称映射
+	const ftypeLabels: Record<string, string> = {
+		'direct': '直推佣金',
+		'indirect': '间推佣金',
+		'commission': '其他佣金',
+		'withdraw': '提现(已通过)',
+	}
+
+	const tabs = ref<string[]>([])
+	const tabTypes = ref<string[]>([])  // 每个Tab对应的ftype值
+	const tabsRow1 = computed<string[]>(() : string[] => { return tabs.value.slice(0, 5) })
+	const tabsRow2 = computed<string[]>(() : string[] => { return tabs.value.slice(5) })
+	const currentTab = ref<number>(0)
+	const searchKeyword = ref<string>('')
+
+	// 更新Tab列表（从数据中提取不重复的ftype）
+	const updateTabs = (list: FundDetailItem[]) : void => {
+		const types = new Set<string>()
+		types.add('all')  // 第一个Tab始终为"全部"
+		list.forEach((item: FundDetailItem) : void => {
+			if (item.ftype) types.add(item.ftype)
+		})
+		const typeArr = Array.from(types)
+		tabTypes.value = typeArr
+		tabs.value = typeArr.map((t: string) : string => {
+			if (t === 'all') return '全部'
+			return ftypeLabels[t] || t
+		})
+	}
+
+	// 当前Tab对应的API type参数
+	const getApiType = (tabIndex: number) : string => {
+		return tabTypes.value[tabIndex] || 'all'
+	}
+
+	// 过滤后的列表
+	const recordList = computed<FundDetailItem[]>(() : FundDetailItem[] => {
+		let list = allRecords.value
+		const search = searchKeyword.value.trim()
+		if (search !== '') {
+			list = list.filter((item : FundDetailItem) : boolean => {
+				return (item.anchor_nickname && item.anchor_nickname.indexOf(search) !== -1)
+					|| (item.user_nickname && item.user_nickname.indexOf(search) !== -1)
+					|| (item.order_no && item.order_no.indexOf(search) !== -1)
+			})
+		}
+		return list
+	})
+
+	// ========== 加载数据 ==========
+	const loadRecords = (resetPage: boolean = false) : void => {
+		if (resetPage) {
+			currentPage.value = 1
+			allRecords.value = []
+		}
+		if (loading.value) return
+		loading.value = true
+
+		const type = getApiType(currentTab.value)
+		getFundDetailApi({
+			platform_id: currentPlatform.value?.id || 0,
+			type: type,
+			keyword: searchKeyword.value.trim(),
+			page: currentPage.value,
+			page_size: pageSize,
+		}).then((res) => {
+			total.value = res.total
+			if (resetPage) {
+				allRecords.value = res.list
+				// 首次加载或切换条件时，根据返回数据更新Tab
+				updateTabs(res.list)
+			} else {
+				allRecords.value = allRecords.value.concat(res.list)
+			}
+		}).catch((_err : any) => {}).finally(() => {
+			loading.value = false
+		})
+	}
+
+	// 加载平台列表
+	const loadPlatforms = () : void => {
+		getPlatformsApi().then((list : PlatformItem[]) => {
+			platforms.value = list
+			if (list.length > 0 && !currentPlatform.value) {
+				currentPlatform.value = list[0]
+				loadRecords(true)
+			}
+		}).catch((_err : any) => {})
+	}
+
+	onMounted(() => {
+		checkLogin()
+		loadPlatforms()
+	})
+
+	// ========== 交互 ==========
+	const goBack = () : void => {
+		const pages = getCurrentPages()
+		if (pages.length > 1) {
+			uni.navigateBack()
+		} else {
+			uni.reLaunch({ url: '/pages/index/index' })
+		}
+	}
+
+	const selectPlatform = (index : number) : void => {
+		currentPlatform.value = platforms.value[index]
+		showPlatformPicker.value = false
+		currentTab.value = 0
+		searchKeyword.value = ''
+		loadRecords(true)
+	}
+
+	const switchTab = (index : number) : void => {
+		if (currentTab.value === index) return
+		currentTab.value = index
+		loadRecords(true)
+	}
+
+	const onSearchInput = (e : any) : void => {
+		searchKeyword.value = e.detail.value as string
+		loadRecords(true)
+	}
+
+	// 加载更多（滚动到底部触发）
+	const loadMore = () : void => {
+		if (loading.value || !hasMore.value) return
+		currentPage.value++
+		loadRecords()
+	}
+
+	// 格式化时间
+	const formatTime = (time : string | null) : string => {
+		if (time == null || time === '') return ''
+		return time.replace('T', ' ').substring(0, 16)
+	}
+</script>
+
+<style>
+	.container {
+		background-color: #F5F0E8;
+		min-height: 100vh;
+	}
+
+	.menu-arrow-icon {
+		width: 28rpx;
+		height: 28rpx;
+	}
+
+	/* 导航栏 */
+	.nav-bar {
+		flex-direction: row;
+		align-items: center;
+		justify-content: space-between;
+		padding: 56rpx 24rpx 16rpx 24rpx;
+		background-color: #FFFFFF;
+	}
+
+	.back-btn {
+		width: 70rpx;
+		height: 70rpx;
+		justify-content: center;
+		align-items: center;
+	}
+
+	.back-icon {
+		font-size: 40rpx;
+		color: #333333;
+		font-weight: 300;
+	}
+
+	.nav-title {
+		font-size: 34rpx;
+		color: #333333;
+		font-weight: 600;
+	}
+
+	.nav-placeholder {
+		width: 70rpx;
+	}
+
+	/* 搜索栏 */
+	.search-bar {
+		flex-direction: row;
+		align-items: center;
+		background-color: #FFFFFF;
+		border-radius: 44rpx;
+		padding: 18rpx 28rpx;
+		margin: 16rpx 24rpx;
+		border: 2rpx solid #E8D5A0;
+	}
+
+	.search-icon {
+		font-size: 28rpx;
+		margin-right: 12rpx;
+	}
+
+	.search-input {
+		flex: 1;
+		font-size: 26rpx;
+		color: #333333;
+	}
+
+	/* 平台切换栏 */
+	.platform-bar {
+		flex-direction: row;
+		align-items: center;
+		background-color: #FFFFFF;
+		border-radius: 12rpx;
+		padding: 16rpx 20rpx;
+		margin: 0 24rpx 16rpx 24rpx;
+	}
+
+	.platform-logo {
+		width: 56rpx;
+		height: 56rpx;
+		border-radius: 8rpx;
+		margin-right: 14rpx;
+	}
+
+	.platform-name {
+		font-size: 28rpx;
+		color: #333333;
+		font-weight: 500;
+		flex: 1;
+	}
+
+	.switch-btn {
+		background-color: #F0C275;
+		border-radius: 24rpx;
+		padding: 10rpx 22rpx;
+	}
+
+	.switch-text {
+		font-size: 24rpx;
+		color: #FFFFFF;
+		font-weight: 500;
+	}
+
+	/* Tab（双行布局） */
+	.tab-scroll {
+		padding: 0 24rpx;
+		background-color: #FFFFFF;
+		border-radius: 12rpx;
+		padding: 16rpx 20rpx;
+		margin: 0 24rpx 16rpx 24rpx;
+	}
+
+	.tab-row {
+		flex-direction: row;
+		padding: 16rpx 0 0 0;
+		justify-content: space-evenly;
+	}
+
+	.tab-item {
+		flex-shrink: 0;
+		padding: 20rpx 0 16rpx 0;
+		margin-right: 36rpx;
+		border-bottom-width: 4rpx;
+		border-bottom-style: solid;
+		border-bottom-color: transparent;
+	}
+
+	.tab-active {
+		border-bottom-color: #F0C275;
+	}
+
+	.tab-text {
+		font-size: 28rpx;
+		color: #999999;
+	}
+
+	.tab-text-active {
+		color: #333333;
+		font-weight: 600;
+	}
+
+	/* 列表 */
+	.list-container {
+		padding: 5rpx 24rpx 30rpx 24rpx;
+		height: calc(100vh - 380rpx);
+	}
+
+	.record-card {
+		background-color: #FFFFFF;
+		border-radius: 12rpx;
+		overflow: hidden;
+		margin-bottom: 16rpx;
+	}
+
+	.record-row1 {
+		flex-direction: row;
+		align-items: center;
+		justify-content: space-between;
+		padding: 24rpx 24rpx 16rpx 24rpx;
+	}
+
+	.record-type {
+		font-size: 28rpx;
+		color: #333333;
+		font-weight: 500;
+	}
+
+	.record-amount {
+		font-size: 32rpx;
+		font-weight: bold;
+	}
+
+	.amount-in {
+		color: #52C41A;
+	}
+
+	.amount-out {
+		color: #FF4D4F;
+	}
+
+	.record-row2 {
+		flex-direction: row;
+		align-items: center;
+		justify-content: space-between;
+		padding: 0 24rpx 12rpx 24rpx;
+	}
+
+	.record-balance {
+		font-size: 24rpx;
+		color: #666666;
+	}
+
+	.record-agent {
+		font-size: 24rpx;
+		color: #666666;
+	}
+
+	.record-row3 {
+		flex-direction: row;
+		align-items: center;
+		justify-content: space-between;
+		background-color: #F0C275;
+		padding: 14rpx 24rpx;
+	}
+
+	.record-no {
+		font-size: 24rpx;
+		color: #333333;
+	}
+
+	.record-time {
+		font-size: 24rpx;
+		color: #333333;
+	}
+
+	/* 空状态 */
+	.empty-state {
+		padding: 120rpx 0;
+		align-items: center;
+	}
+
+	.empty-icon {
+		width: 160rpx;
+		height: 140rpx;
+		margin-bottom: 20rpx;
+	}
+
+	.empty-text {
+		font-size: 28rpx;
+		color: #CCCCCC;
+	}
+
+	/* 没有更多了 */
+	.no-more {
+		padding: 40rpx 0 60rpx 0;
+		align-items: center;
+	}
+
+	.no-more-text {
+		font-size: 24rpx;
+		color: #CCCCCC;
+	}
+
+	/* 弹窗 */
+	.popup-mask {
+		position: fixed;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		background-color: rgba(0, 0, 0, 0.5);
+		z-index: 999;
+		justify-content: flex-end;
+	}
+
+	.popup-content {
+		background-color: #FFFFFF;
+		border-radius: 24rpx 24rpx 0 0;
+		max-height: 70vh;
+	}
+
+	.popup-header {
+		flex-direction: row;
+		align-items: center;
+		justify-content: space-between;
+		padding: 28rpx 30rpx;
+		border-bottom: 1rpx solid #F0EDE6;
+	}
+
+	.popup-cancel {
+		font-size: 28rpx;
+		color: #F0C275;
+	}
+
+	.popup-title {
+		font-size: 32rpx;
+		color: #333333;
+		font-weight: 600;
+	}
+
+	.popup-close {
+		font-size: 32rpx;
+		color: #999999;
+	}
+
+	.popup-list {
+		max-height: 60vh;
+	}
+
+	.popup-item {
+		flex-direction: row;
+		align-items: center;
+		padding: 26rpx 30rpx;
+		border-bottom: 1rpx solid #F5F0E8;
+	}
+
+	.popup-item-logo {
+		width: 64rpx;
+		height: 64rpx;
+		border-radius: 12rpx;
+		margin-right: 20rpx;
+	}
+
+	.popup-item-name {
+		font-size: 30rpx;
+		color: #333333;
+	}
+</style>

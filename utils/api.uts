@@ -1,0 +1,687 @@
+/**
+ * 登录相关 API 接口
+ */
+
+import { post, get, put } from "@/utils/request.uts"
+
+// 登录请求参数
+export type LoginParams = {
+	username: string
+	password: string
+}
+
+// 登录返回数据
+export type LoginResult = {
+	token: string
+	admin: AdminInfo
+}
+
+// 管理员/用户信息
+export type AdminInfo = {
+	id: number
+	username: string
+	nickname: string
+	role: number       // 0=超级管理员, 1=普通用户/工会
+	avatar: string     // 头像URL
+	orgId: number      // 推荐人ID
+	parentId: string   // 父级ID
+	phone?: string     // 手机号
+	balance?: string   // 余额
+	totalRecharge?: string   // 总充值
+	agentCommission?: string // 佣金
+	status?: number
+	createdAt?: string
+}
+
+/**
+ * 登录
+ * POST /api/admin/login
+ * 支持 admins 表和 users 表双重登录
+ *   - admins 表：通过 username 字段匹配
+ *   - users 表：通过 phone 字段匹配
+ */
+export const loginApi = (params: LoginParams): Promise<LoginResult> => {
+	return post<LoginResult>('/login', params).then(res => res.data)
+}
+
+/**
+ * 获取当前用户信息
+ * GET /api/admin/auth/info
+ */
+export const getUserInfoApi = (): Promise<AdminInfo> => {
+	return get<AdminInfo>('/auth/info').then(res => res.data)
+}
+
+// ==================== 新闻公告 ====================
+
+// 公告
+export type NoticeItem = {
+	id: number
+	title: string
+	content: string
+	type: string
+	is_top: number
+	status: number
+	publish_time: string
+	created_at: string
+}
+
+export type NoticeListResult = {
+	list: NoticeItem[]
+	total: number
+	page: number
+	page_size: number
+}
+
+// 新闻
+export type NewsItem = {
+	id: number
+	title: string
+	category: string
+	author: string
+	cover_url: string
+	content: string
+	views: number
+	status: number
+	publish_time: string
+	create_time: string
+}
+
+export type NewsListResult = {
+	list: NewsItem[]
+	total: number
+	currentPage: number
+	pageSize: number
+}
+
+// 公告/新闻查询参数
+export type NoticeQueryParams = {
+	keyword?: string
+	type?: string
+	status?: number  // 0=草稿, 1=已发布
+	page?: number
+	page_size?: number
+}
+
+export type NewsQueryParams = {
+	keyword?: string
+	category?: string
+	status?: number  // 0=草稿, 1=已发布
+	currentPage?: number
+	pageSize?: number
+}
+
+/**
+ * 获取公告列表
+ * GET /api/admin/notices
+ */
+export const getNoticesApi = (params?: NoticeQueryParams): Promise<NoticeListResult> => {
+	return get<NoticeListResult>('/notices', params).then(res => res.data)
+}
+
+/**
+ * 获取新闻列表
+ * GET /api/admin/news
+ */
+export const getNewsApi = (params?: NewsQueryParams): Promise<NewsListResult> => {
+	return get<NewsListResult>('/news', params).then(res => res.data)
+}
+
+// ==================== 平台列表 ====================
+
+// 平台项
+export type PlatformItem = {
+	id: number
+	platformName: string
+	invitation: string
+	downloadUrl: string
+	platformImg: string
+	platformqrCode: string
+	status: string
+	createTime: string
+}
+
+/**
+ * 获取平台列表
+ * GET /api/admin/platforms
+ */
+export const getPlatformsApi = (): Promise<PlatformItem[]> => {
+	return get<PlatformItem[]>('/platforms').then(res => res.data)
+}
+
+// 直播平台项（来自 live_platforms 表）
+export type LivePlatformItem = {
+	id: number
+	platformName: string
+	invitation: string
+	downloadUrl: string
+	platformImg: string
+	platformqrCode: string
+	status: string
+	createTime: string
+}
+
+/**
+ * 获取直播平台列表
+ * GET /api/admin/live-platforms
+ */
+export const getLivePlatformsApi = (): Promise<LivePlatformItem[]> => {
+	return get<LivePlatformItem[]>('/live-platforms').then(res => res.data)
+}
+
+// ==================== 主播列表 ====================
+
+// 主播项
+export type AnchorItem = {
+	id: number
+	nickname: string
+	anchorId: string
+	phone: string
+	userImg: string           // 主播头像
+	avatar: string            // 头像（兼容字段）
+	todayRevenue: number      // 今日业绩
+	totalRevenue: string      // 总业绩
+	status: string | number  // 0=审核中, 1=已审核, 2=未通过
+	registerTime: string
+	platformId: number
+	platformName: string
+}
+
+// 主播查询参数
+export type AnchorQueryParams = {
+	platformId?: number
+	keyword?: string
+	status?: string  // pending, approved, rejected
+	page?: number
+	page_size?: number
+}
+
+// 主播列表结果
+export type AnchorListResult = {
+	list: AnchorItem[]
+	total: number
+	page: number
+	page_size: number
+}
+
+/**
+ * 获取主播列表（当前登录用户旗下的主播）
+ * GET /api/admin/anchors
+ */
+export const getAnchorsApi = (params?: AnchorQueryParams): Promise<AnchorListResult> => {
+	return get<AnchorListResult>('/anchors', params).then(res => res.data)
+}
+
+// 直播主播项（来自 live_anchors 表）
+export type LiveAnchorItem = {
+	id: number
+	nickname: string
+	anchorId: string
+	phone: string
+	userImg: string           // 主播头像
+	avatar: string            // 头像（兼容字段）
+	status: string | number  // 0=审核中, 1=已审核, 2=未通过
+	registerTime: string
+	platformId: number
+	platformName: string
+	operationType?: string    // 运营类型
+}
+
+// 直播主播列表结果
+export type LiveAnchorListResult = {
+	list: LiveAnchorItem[]
+	total: number
+	page: number
+	page_size: number
+}
+
+/**
+ * 获取直播主播列表
+ * GET /api/admin/live-anchors
+ */
+export const getLiveAnchorsApi = (params?: AnchorQueryParams): Promise<LiveAnchorListResult> => {
+	return get<LiveAnchorListResult>('/live-anchors', params).then(res => res.data)
+}
+
+// ==================== 添加主播（办理入职） ====================
+
+// 添加主播请求参数
+export type AddAnchorParams = {
+	platformId: number      // 平台ID
+	nickname: string        // 主播昵称
+	anchorId: string        // 主播ID
+	phone: string           // 手机号
+	gender: number          // 性别：1=男, 2=女
+	realName?: string       // 真实姓名
+	unionId?: number         // 邀请人ID
+}
+
+/**
+ * 添加主播（提交入职）- 语聊
+ * POST /api/admin/anchors
+ */
+export const addAnchorApi = (params: AddAnchorParams): Promise<any> => {
+	return post<any>('/anchors', params).then(res => res.data)
+}
+
+// ==================== 添加直播主播（办理入职） ====================
+
+// 添加直播主播请求参数
+export type AddLiveAnchorParams = {
+	platformId: number      // 平台ID
+	nickname: string        // 主播昵称
+	anchorId: string        // 主播ID/账号
+	phone: string           // 手机号
+	realName?: string       // 真实姓名
+	commissionRate?: number // 佣金比例（1-100）
+	operationType?: number  // 运营模式：0=0.5/1分钟，1=分成35%
+	userId?: number         // 关联用户ID
+	unionId?: number        // 邀请人ID（当前登录用户）
+}
+
+/**
+ * 添加直播主播（提交入职）
+ * POST /api/admin/live-anchors
+ */
+export const addLiveAnchorApi = (params: AddLiveAnchorParams): Promise<any> => {
+	return post<any>('/live-anchors', params).then(res => res.data)
+}
+
+// ==================== 我的团队 ====================
+
+// 团队统计数据（来自 /api/admin/users/my-account-stats）
+export type MyAccountStats = {
+	subUserCount: number     // 下级用户数（直推代理）
+	anchorCount: number      // 旗下主播数
+	totalCommission: string  // 累计佣金
+}
+
+/**
+ * 获取我的账户统计（团队统计）
+ * GET /api/admin/users/my-account-stats
+ */
+export const getMyAccountStatsApi = (): Promise<MyAccountStats> => {
+	return get<MyAccountStats>('/users/my-account-stats').then(res => res.data)
+}
+
+/**
+ * 获取我的间推代理统计（一次性返回，无需多次请求）
+ * GET /api/admin/users/my-indirect-stats
+ * 逻辑：找出我的直推用户 -> 汇总每个直推用户的下级用户数 = 间推代理数
+ */
+export const getMyIndirectStatsApi = (): Promise<{ indirectAgentCount: number }> => {
+	return get<{ indirectAgentCount: number }>('/users/my-indirect-stats').then(res => res.data)
+}
+
+// 用户列表项（用于展示代理）
+export type UserItem = {
+	id: number
+	nickname: string
+	phone: string
+	phoneMasked: string
+	role: number
+	orgId: number
+	parentId: string
+	avatar: string           // 头像URL
+	balance: string
+	totalRecharge: string
+	agentCommission: string
+	status: number
+	statusText: string
+	createdAt: string
+}
+
+// 用户列表结果
+export type UserListResult = {
+	list: UserItem[]
+	total: number
+	page: number
+	pageSize: number
+}
+
+/**
+ * 获取用户列表（用于团队页-代理列表）
+ * GET /api/admin/users
+ */
+export const getUsersApi = (params?: any): Promise<UserListResult> => {
+	return get<UserListResult>('/users', params).then(res => res.data)
+}
+
+/**
+ * 校验工会ID（用于查看推荐人信息）
+ * GET /api/admin/users/check-org/{id}
+ */
+export const checkOrgApi = (id: number): Promise<{valid: boolean, nickname: string}> => {
+	return get<{valid: boolean, nickname: string}>(`/users/check-org/${id}`).then(res => res.data)
+}
+
+// 团队成员展示项
+export type TeamMemberItem = {
+	id: number
+	anchorId: string         // 主播ID
+	nickname: string         // 昵称
+	userImg: string          // 头像
+	todayRevenue: string     // 今日业绩
+	totalRevenue: string     // 总业绩
+	platformId: number       // 平台ID
+	platformName: string     // 平台名称
+	phone: string            // 手机号
+	status: number           // 状态
+}
+
+// 代理展示项
+export type AgentItem = {
+	id: number
+	nickname: string
+	phone: string
+	phoneMasked: string
+	agentCommission: string
+	totalRecharge: string
+	status: number
+	statusText: string
+	createdAt: string
+	avatar: string          // 头像
+}
+
+// 推荐人信息
+export type ReferrerInfo = {
+	referrerId: string       // 推荐人ID
+	referrerName: string     // 推荐人名称
+}
+
+// ==================== 平台业绩 ====================
+
+// 业绩汇总统计（/performance/summary/stats）
+export type SummaryStats = {
+	todayIncome: number       // 今日收益
+	todayPersonal: number     // 今日个人业绩
+	todayTeam: number         // 今日团队业绩
+	totalIncome: number       // 总收益
+	monthIncome: number       // 本月收益
+	teamAnchorCount: number   // 团队主播人数
+	totalTeam: number         // 团队总业绩
+}
+
+// 平台业绩统计（/performance/stats）
+export type PerformanceStatItem = {
+	label: string
+	value: string
+}
+
+// 佣金配置（/performance/commission）
+export type CommissionConfig = {
+	directRate: number    // 直推比例
+	peerRate: number      // 平级比例
+}
+
+// 等级配置（/performance/level）
+export type LevelConfig = {
+	level: number         // 等级
+}
+
+/**
+ * 获取业绩汇总统计
+ * GET /api/admin/performance/summary/stats
+ */
+export const getSummaryStatsApi = (): Promise<SummaryStats> => {
+	return get<SummaryStats>('/performance/summary/stats').then(res => res.data)
+}
+
+/**
+ * 获取平台业绩统计
+ * GET /api/admin/performance/stats?platformId=xxx
+ */
+export const getPerformanceStatsApi = (platformId: number): Promise<PerformanceStatItem[]> => {
+	return get<PerformanceStatItem[]>('/performance/stats', { platformId }).then(res => res.data)
+}
+
+/**
+ * 获取平台佣金配置
+ * GET /api/admin/performance/commission?platformId=xxx
+ */
+export const getCommissionApi = (platformId: number): Promise<CommissionConfig> => {
+	return get<CommissionConfig>('/performance/commission', { platformId }).then(res => res.data)
+}
+
+/**
+ * 获取平台等级配置
+ * GET /api/admin/performance/level?platformId=xxx
+ */
+export const getLevelApi = (platformId: number): Promise<LevelConfig> => {
+	return get<LevelConfig>('/performance/level', { platformId }).then(res => res.data)
+}
+
+// ==================== 资金明细 ====================
+
+// 资金明细项（来自 /fund-detail API）
+export type FundDetailItem = {
+	uid: string              // 唯一ID（C前缀=佣金，W前缀=提现）
+	direction: string        // in=收入, out=支出
+	amount: number           // 金额
+	platform_id: number
+	user_id: number
+	anchor_id: number | null
+	anchor_nickname: string  // 主播昵称
+	user_nickname: string    // 用户昵称
+	order_no: string         // 编号（performance_id 或 order_no）
+	created_at: string       // 时间
+	type_name: string        // 类型名称
+	ftype: string            // 类型标识：direct, indirect, commission, withdraw
+}
+
+// 资金明细列表结果
+export type FundDetailResult = {
+	list: FundDetailItem[]
+	total: number
+	page: number
+	page_size: number
+}
+
+// 资金明细查询参数
+export type FundDetailParams = {
+	platform_id?: number
+	type?: string      // ''=全部, direct=直推佣金, indirect=间推佣金, withdraw=提现
+	keyword?: string
+	start_date?: string
+	end_date?: string
+	page?: number
+	page_size?: number
+}
+
+/**
+ * 获取资金明细列表
+ * GET /api/admin/fund-detail
+ */
+export const getFundDetailApi = (params?: FundDetailParams): Promise<FundDetailResult> => {
+	return get<FundDetailResult>('/fund-detail', params).then(res => res.data)
+}
+
+// ==================== 系统配置 ====================
+
+// 系统配置（/system/config）
+export type SystemConfig = {
+	site_name: string
+	site_logo: string
+	site_icon: string
+	site_icp: string
+	service_phone: string
+	service_qr: string
+	service_wechat: string
+	work_time: string
+	about_us: string
+	user_agreement: string
+	privacy_policy: string
+	// 提现配置
+	withdraw_fee_type: string        // fixed|percent
+	withdraw_fee_fixed: string       // 固定手续费（元）
+	withdraw_fee_percent: string     // 手续费比例（%）
+	withdraw_min_amount: string      // 最低提现金额
+	withdraw_daily_limit: string     // 每日提现上限（0=不限）
+}
+
+/**
+ * 获取系统配置
+ * GET /api/admin/system/config
+ */
+export const getSystemConfigApi = (): Promise<SystemConfig> => {
+	return get<SystemConfig>('/system/config').then(res => res.data)
+}
+
+// ==================== 提现账户 ====================
+
+// 提现账户项（支付宝或灵工）
+export type WithdrawAccountItem = {
+	id: number
+	accountNo: string      // 账号/银行卡号
+	realName: string       // 真实姓名
+	idCard?: string        // 身份证号（灵工）
+	bankNo?: string        // 银行卡号（灵工，即 account_no）
+	bankPhone?: string     // 预留手机号（灵工）
+}
+
+// 提现账户列表返回数据（account_type=2 工会自身）
+export type WithdrawAccountsResult = {
+	list: Array<{
+		userId: string
+		nickname: string
+		phone: string
+		alipay: WithdrawAccountItem | null   // 支付宝账户
+		lingong: WithdrawAccountItem | null  // 灵工账户
+		enabled: boolean
+		createTime: string
+	}>
+	total: number
+	stats: {
+		alipayCount: number
+		lingongCount: number
+		userCount: number
+		bothCount: number
+	}
+}
+
+/**
+ * 获取提现账户列表
+ * GET /api/admin/withdraw/accounts?account_type=2
+ */
+export const getWithdrawAccountsApi = (params?: { account_type?: number, keyword?: string, page?: number, pageSize?: number }): Promise<WithdrawAccountsResult> => {
+	return get<WithdrawAccountsResult>('/withdraw/accounts', params).then(res => res.data)
+}
+
+/**
+ * 添加提现账户
+ * POST /api/admin/withdraw/accounts
+ */
+export const addWithdrawAccountApi = (params: { account_type: number, type: number, account_no: string, real_name: string, id_card?: string, bank_phone?: string }): Promise<{ id: number }> => {
+	return post<{ id: number }>('/withdraw/accounts', params).then(res => res.data)
+}
+
+/**
+ * 编辑提现账户
+ * PUT /api/admin/withdraw/accounts/{id}
+ */
+export const updateWithdrawAccountApi = (id: number, params: { account_no: string, real_name: string, id_card?: string, bank_phone?: string }): Promise<void> => {
+	return put<any>(`/withdraw/accounts/${id}`, params).then(res => res.data)
+}
+
+// ==================== 提现申请 ====================
+
+// 提现记录项
+export type WithdrawRecordItem = {
+	id: number
+	order_no: string           // 订单编号
+	amount: number             // 提现金额
+	fee: number                // 手续费
+	actual_amount: number      // 实际到账金额
+	type: number               // 1=支付宝, 2=灵工
+	account_name: string       // 账户姓名
+	account_no: string         // 账户账号（脱敏）
+	status: number             // 0=待审核, 1=已通过, 2=已拒绝
+	reject_reason?: string     // 拒绝原因
+	apply_time: string         // 申请时间
+	audit_time?: string        // 审核时间
+	user_nickname: string      // 主播昵称
+	platform_id: number
+	platform_name: string      // 平台名称
+	type_text: string          // 支付宝/灵工
+	status_text: string        // 待审核/已通过/已拒绝
+}
+
+// 提现记录列表结果
+export type WithdrawRecordsResult = {
+	list: WithdrawRecordItem[]
+	total: number
+	currentPage: number
+	pageSize: number
+	stats: {
+		total: number
+		pending: number
+		approved: number
+		rejected: number
+	}
+}
+
+// 提现申请参数
+export type CreateWithdrawParams = {
+	amount: number              // 提现金额
+	type: number                // 1=支付宝, 2=灵工
+	account_name: string        // 账户姓名
+	account_no: string          // 账户账号（完整，非脱敏）
+	anchor_id?: number          // 关联主播ID（可选，工会提现时不需要）
+}
+
+/**
+ * 获取提现记录列表
+ * GET /api/admin/withdraw/records?status=&currentPage=&pageSize=
+ */
+export const getWithdrawRecordsApi = (params?: { status?: number, currentPage?: number, pageSize?: number }): Promise<WithdrawRecordsResult> => {
+	return get<WithdrawRecordsResult>('/withdraw/records', params).then(res => res.data)
+}
+
+/**
+ * 提交提现申请
+ * POST /api/admin/withdraw/records
+ */
+export const createWithdrawApi = (params: CreateWithdrawParams): Promise<{ id: number, order_no: string }> => {
+	return post<{ id: number, order_no: string }>('/withdraw/records', params).then(res => res.data)
+}
+
+// ==================== 短信验证码 ====================
+
+/** 发送短信验证码请求参数 */
+export type SendSmsParams = {
+	phone: string       // 手机号
+}
+
+/**
+ * 发送短信验证码
+ * POST /api/admin/sms/send
+ */
+export const sendSmsCodeApi = (params: SendSmsParams): Promise<{ message: string }> => {
+	return post<{ message: string }>('/sms/send', params).then(res => res.data)
+}
+
+// ==================== 用户注册 ====================
+
+/** 注册请求参数 */
+export type RegisterParams = {
+	phone: string       // 手机号
+	smsCode: string     // 短信验证码
+	password: string    // 登录密码
+	nickname: string    // 昵称
+	gender: number      // 性别：1=男, 2=女
+	orgId?: string      // 推荐人ID（可选）
+}
+
+/** 注册返回数据 */
+export type RegisterResult = {
+	token: string
+	user: AdminInfo
+}
+
+/**
+ * 用户注册
+ * POST /api/admin/register
+ */
+export const registerApi = (params: RegisterParams): Promise<RegisterResult> => {
+	return post<RegisterResult>('/register', params).then(res => res.data)
+}

@@ -1,0 +1,201 @@
+<template>
+	<view class="container">
+		<!-- 顶部导航栏 -->
+		<view class="nav-bar">
+			<view class="back-btn" @click="goBack">
+				<text class="back-icon">‹</text>
+			</view>
+			<text class="nav-title">推广</text>
+			<view class="nav-placeholder"></view>
+		</view>
+
+		<!-- 推广海报 -->
+		<view class="poster-section">
+			<image class="poster-img" src="https://i.postimg.cc/sg2NqxFL/73aafae175e523bc79efca3d9aea0774.jpg" mode="widthFix" />
+		</view>
+
+		<!-- 操作按钮 -->
+		<view class="action-section">
+			<view class="action-btn btn-save" @click="saveImage">
+				<text class="btn-text">保存图片</text>
+			</view>
+			<view class="action-btn btn-copy" @click="copyLink">
+				<text class="btn-text">复制推广链接</text>
+			</view>
+		</view>
+	</view>
+</template>
+
+<script setup lang="uts">
+	// 推广链接（占位，后续替换为真实接口）
+	const promoteLink = ref<string>('https://h5.gxjujing.com/')
+
+	// 返回上一页
+	const goBack = () : void => {
+		const pages = getCurrentPages()
+		if (pages.length > 1) {
+			uni.navigateBack()
+		} else {
+			uni.switchTab({
+				url: '/pages/index/index'
+			})
+		}
+	}
+
+	// 保存图片到相册
+	const saveImage = () : void => {
+		// #ifdef H5
+		// H5环境：通过a标签下载
+		downloadImage()
+		// #endif
+		// #ifndef H5
+		uni.showLoading({ title: '保存中...' })
+		uni.getImageInfo({
+			src: '/static/436692.jpg',
+			success: (res : GetImageInfoSuccessCallbackResult) => {
+				uni.saveImageToPhotosAlbum({
+					filePath: res.path,
+					success: () => {
+						uni.hideLoading()
+						uni.showToast({ title: '已保存到相册', icon: 'success' })
+					},
+					fail: (err : any) => {
+						uni.hideLoading()
+						if (String(err.errMsg).indexOf('auth deny') !== -1 || String(err.errMsg).indexOf('authorize') !== -1) {
+							uni.showModal({
+								title: '提示',
+								content: '需要您授权保存相册权限',
+								showCancel: false
+							})
+						} else {
+							uni.showToast({ title: '保存失败', icon: 'none' })
+						}
+					}
+				})
+			},
+			fail: () => {
+				uni.hideLoading()
+				uni.showToast({ title: '图片加载失败', icon: 'none' })
+			}
+		})
+		// #endif
+	}
+
+	// H5环境下载图片
+	const downloadImage = () : void => {
+		// #ifdef H5
+		try {
+			const link = document.createElement('a')
+			link.href = '/static/436692.jpg'
+			link.download = '上宸互娱推广海报.jpg'
+			link.click()
+			uni.showToast({ title: '正在下载...', icon: 'success' })
+		} catch (e) {
+			uni.showToast({ title: '下载失败，请长按图片保存', icon: 'none' })
+		}
+		// #endif
+	}
+
+	// 复制推广链接
+	const copyLink = () : void => {
+		uni.setClipboardData({
+			data: promoteLink.value,
+			success: () => {
+				uni.showToast({ title: '链接已复制', icon: 'success' })
+			},
+			fail: () => {
+				uni.showToast({ title: '复制失败', icon: 'none' })
+			}
+		})
+	}
+</script>
+
+<style>
+	.container {
+		flex: 1;
+		background-color: #F5F0E8;
+		overflow-y: auto;
+	}
+
+	/* 顶部导航栏 */
+	.nav-bar {
+		flex-direction: row;
+		align-items: center;
+		justify-content: space-between;
+		padding: 60rpx 20rpx 20rpx 20rpx;
+		background-color: #FFFFFF;
+		border-bottom: 1rpx solid #EEEEEE;
+	}
+
+	.back-btn {
+		width: 60rpx;
+		height: 60rpx;
+		justify-content: center;
+		align-items: center;
+	}
+
+	.back-icon {
+		font-size: 48rpx;
+		color: #333333;
+	}
+
+	.nav-title {
+		font-size: 34rpx;
+		color: #333333;
+		font-weight: 500;
+	}
+
+	.nav-placeholder {
+		width: 60rpx;
+	}
+
+	/* 推广海报区域 */
+	.poster-section {
+		padding: 30rpx;
+		display: flex;
+		justify-content: center;
+	}
+
+	.poster-img {
+		width: 100%;
+		border-radius: 16rpx;
+		box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.12);
+	}
+
+	/* 操作按钮区域 */
+	.action-section {
+		flex-direction: row;
+		justify-content: space-around;
+		padding: 20rpx 40rpx 60rpx 40rpx;
+	}
+
+	.action-btn {
+		width: 300rpx;
+		height: 88rpx;
+		border-radius: 44rpx;
+		justify-content: center;
+		align-items: center;
+	}
+
+	.btn-save {
+		background-color: #FFFFFF;
+		border: 2rpx solid #D4A853;
+	}
+
+	.btn-copy {
+		background-color: #E8B84D;
+	}
+
+	.btn-text {
+		font-size: 30rpx;
+		font-weight: 500;
+	}
+
+	.btn-save .btn-text {
+		color: #8B6914;
+	}
+
+	.btn-copy .btn-text {
+		color: #FFFFFF;
+	}
+</style>

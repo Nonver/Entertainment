@@ -1,0 +1,708 @@
+<template>
+	<view class="container">
+		<!-- 顶部导航栏 -->
+		<view class="nav-bar">
+			<view class="back-btn" @click="goBack">
+				<text class="back-icon">‹</text>
+			</view>
+			<text class="nav-title">办理入职</text>
+			<view class="nav-placeholder"></view>
+		</view>
+
+		<!-- 表单区域 -->
+		<view class="form-section">
+			<!-- 头部卡片 -->
+			<view class="form-header">
+				<view class="header-left">
+					<text class="header-title">办理入职</text>
+				</view>
+				<view class="header-right" @click="goAnchorList">
+					<text class="anchor-btn">主播列表 →</text>
+				</view>
+			</view>
+
+			<!-- 表单 -->
+			<view class="form-card">
+				<view class="form-item">
+					<text class="form-label">入职平台</text>
+					<text class="form-value">{{appName}}</text>
+				</view>
+
+				<view class="form-item">
+					<text class="form-label">主播昵称</text>
+					<input class="form-input" type="text" placeholder="请输入主播昵称" v-model="formData.nickname" />
+				</view>
+
+				<view class="form-item">
+					<text class="form-label">主播ID</text>
+					<input class="form-input" type="text" placeholder="请输入主播ID" v-model="formData.anchorId" />
+				</view>
+				<view class="form-item">
+					<text class="form-label">真实姓名</text>
+					<input class="form-input" type="text" placeholder="请输入真实姓名" v-model="formData.realName" />
+				</view>
+				<view class="form-item">
+					<text class="form-label">手机号</text>
+					<input class="form-input" type="number" placeholder="请输入手机号" v-model="formData.phone" />
+				</view>
+				<view  v-if="platformType === 'live'" class="form-item">
+					<text class="form-label">佣金比例</text>
+					<input class="form-input" type="number" placeholder="0%" v-model="formData.commission" />
+				</view>
+				<view class="form-item" @click="showGenderPicker">
+					<text class="form-label">性别</text>
+					<text class="form-value" :class="{placeholder: !formData.gender}">{{formData.gender || '请选择性别'}}</text>
+					<text class="form-arrow">›</text>
+				</view>
+
+				<view class="form-item">
+					<text class="form-label">邀请人ID</text>
+					<input class="form-input" :class="{disabled: !isAdmin}" :disabled="!isAdmin" type="text"
+						:placeholder="isAdmin ? '请输入邀请人ID' : '默认当前账号'"
+						v-model="formData.inviterId" />
+				</view>
+
+				<!-- 关联账户（仅直播平台显示） -->
+				<view v-if="platformType === 'live'" class="form-item" @click="showUserPicker">
+					<text class="form-label">关联账户</text>
+					<text class="form-value" :class="{placeholder: formData.userId <= 0}">{{ getSelectedUserName() }}</text>
+					<text class="form-arrow">›</text>
+				</view>
+			</view>
+
+			<!-- 提交按钮 -->
+			<view class="submit-btn" @click="submitForm">
+				<text class="submit-text">提交入职</text>
+			</view>
+		</view>
+
+	<!-- 性别选择弹窗 -->
+	<view class="modal-mask" v-if="genderPickerVisible" @click="genderPickerVisible = false"></view>
+	<view class="gender-modal" v-if="genderPickerVisible">
+		<view class="modal-header">
+			<text class="cancel-btn" @click="genderPickerVisible = false">取消</text>
+			<text class="modal-title">选择性别</text>
+			<text class="close-btn" @click="genderPickerVisible = false">×</text>
+		</view>
+		<view class="gender-list">
+			<view class="gender-item" v-for="(item, index) in genderOptions" :key="index"
+				:class="{selected: formData.gender === item}" @click="selectGender(item)">
+				<text class="gender-text">{{item}}</text>
+				<text class="gender-check" v-if="formData.gender === item">✓</text>
+			</view>
+		</view>
+	</view>
+
+	<!-- 关联账户选择弹窗 -->
+	<view class="modal-mask" v-if="userPickerVisible" @click="userPickerVisible = false"></view>
+	<view class="user-modal" v-if="userPickerVisible">
+		<view class="modal-header">
+			<text class="cancel-btn" @click="userPickerVisible = false">取消</text>
+			<text class="modal-title">选择关联账户</text>
+			<text class="close-btn" @click="userPickerVisible = false">×</text>
+		</view>
+		<view class="user-list">
+			<view class="user-item" v-for="(item, index) in userSelectList" :key="index"
+				:class="{selected: formData.userId === item.id}" @click="selectUser(index)">
+				<text class="user-text">{{ item.nickname || ('用户' + item.id) }}</text>
+				<text class="user-check" v-if="formData.userId === item.id">✓</text>
+			</view>
+		</view>
+	</view>
+
+	<!-- 无权限提示弹窗 -->
+	<view class="modal-mask" v-if="noPermissionVisible"></view>
+	<view class="no-permission-modal" v-if="noPermissionVisible">
+		<view class="no-permission-icon">⚠️</view>
+		<text class="no-permission-title">暂无邀请权限</text>
+		<text class="no-permission-desc">您的账号暂未开通主播绑定权限，请联系客服申请开通</text>
+		<view class="no-permission-btn" @click="goBack">
+			<text class="no-permission-btn-text">我知道了</text>
+		</view>
+	</view>
+	</view>
+</template>
+
+<script setup lang="uts">
+	import { ref } from "vue";
+	import { getUserInfo } from "@/utils/auth.uts";
+	import { addAnchorApi, addLiveAnchorApi, getUsersApi } from "@/utils/api.uts";
+
+	// 判断是否有邀请权限 (role=0 超级管理员, role=1 普通用户有邀请权限, 其他无权限)
+	const userInfo = getUserInfo()
+	// hasInvitePermission: admin(role=0) 和 普通用户(role=1) 都有邀请权限
+	const isAdmin = ref<boolean>(userInfo != null && (userInfo.role as number) === 0)
+	const hasInvitePermission = ref<boolean>(userInfo != null && ((userInfo.role as number) === 0 || (userInfo.role as number) === 1))
+	const noPermissionVisible = ref<boolean>(false)
+
+	// 页面参数
+	const appName = ref<string>('')
+	const platformId = ref<number>(0)
+	const platformType = ref<string>('chat') // chat=语聊, live=直播
+
+	// 当前用户ID（普通用户自动填入）
+	const currentUserId = ref<number>(0)
+
+	// 关联账户列表
+	const userSelectList = ref<any[]>([])
+	const userPickerVisible = ref<boolean>(false)
+	const selectedUserIndex = ref<number>(-1)
+
+	// 性别选项
+	const genderOptions = ['男', '女']
+	const genderPickerVisible = ref<boolean>(false)
+
+	// 性别映射：男=1, 女=2
+	const genderMap: Record<string, number> = {
+		'男': 1,
+		'女': 2
+	}
+
+	// 提交中状态
+	const submitting = ref<boolean>(false)
+
+	// 表单数据
+	const formData = ref<{
+		nickname: string,
+		anchorId: string,
+		realName:string,
+		phone: string,
+		gender: string,
+		inviterId: string,
+		commission:string,
+		userId: number
+	}>({
+		nickname: '',
+		anchorId: '',
+		realName:'',
+		phone: '',
+		gender: '',
+		inviterId: '',
+		commission:'',
+		userId: 0
+	})
+
+	onLoad((options : UTSJSONObject | null) => {
+		// console.log('quick-bind onLoad:', JSON.stringify(options))
+		if (options != null) {
+			const name = options['name']
+			if (name != null) {
+				appName.value = name as string
+			}
+			const pid = options['platformId']
+			if (pid != null) {
+				platformId.value = Number(pid)
+			}
+			const ptype = options['platformType'] as string
+			if (ptype != null) {
+				platformType.value = ptype
+			}
+		}
+
+		// 权限检查：没有邀请权限则显示提示
+		if (!hasInvitePermission.value) {
+			noPermissionVisible.value = true
+			return
+		}
+
+		// 获取当前登录用户的 ID，普通用户自动填入邀请人ID
+		if (userInfo != null && userInfo.id != null) {
+			currentUserId.value = userInfo.id as number
+			if (!isAdmin.value) {
+				formData.value.inviterId = String(currentUserId.value)
+			}
+		}
+
+		// 加载关联账户列表（当前用户 + 下级用户）
+		loadUserList()
+	})
+
+	// 返回上一页
+	const goBack = () : void => {
+		uni.navigateBack({
+			delta: 1,
+			fail: () => {
+				// navigateBack 失败时回退到首页
+				uni.switchTab({ url: '/pages/index/index' })
+			}
+		})
+	}
+
+	// 跳转到主播列表
+	const goAnchorList = () : void => {
+		let url = `/pages/anchor-list/anchor-list?name=${encodeURIComponent(appName.value)}`
+		if (platformId.value > 0) {
+			url += `&platformId=${platformId.value}`
+		}
+		// console.log('navigate to anchor list:', url)
+		uni.navigateTo({ url: url })
+	}
+
+	// 显示性别选择
+	const showGenderPicker = () : void => {
+		genderPickerVisible.value = true
+	}
+
+	// 选择性别
+	const selectGender = (gender : string) : void => {
+		formData.value.gender = gender
+		genderPickerVisible.value = false
+	}
+
+	// 加载关联账户列表
+	const loadUserList = () : void => {
+		getUsersApi().then((res: any) => {
+			let allUsers: any[] = []
+			if (res.list != null && Array.isArray(res.list)) {
+				allUsers = res.list
+			}
+
+			// 构建列表：自己 + 下级用户（org_id 等于自己的）
+			const selfFromList = allUsers.find((u: any) => u.id === currentUserId.value)
+			const selfItem: any = selfFromList != null ? selfFromList : { id: currentUserId.value, nickname: userInfo?.nickname || ('用户' + String(currentUserId.value)) }
+
+			if (isAdmin.value) {
+				// 超管：显示所有用户，自己放第一位
+				userSelectList.value = [selfItem, ...allUsers.filter((u: any) => u.id !== currentUserId.value)]
+			} else {
+				// 普通用户：显示自己 + org_id 等于自己的下级用户
+				const subUsers = allUsers.filter((u: any) => (u.orgId as number) === currentUserId.value && (u.id as number) !== currentUserId.value)
+				userSelectList.value = [selfItem, ...subUsers]
+			}
+		}).catch(() => {
+			// 接口失败时至少放入自己
+			userSelectList.value = [{ id: currentUserId.value, nickname: userInfo?.nickname || ('用户' + String(currentUserId.value)) }]
+		})
+	}
+
+	// 显示关联账户选择器
+	const showUserPicker = () : void => {
+		userPickerVisible.value = true
+	}
+
+	// 选择关联账户
+	const selectUser = (index : number) : void => {
+		selectedUserIndex.value = index
+		const user = userSelectList.value[index]
+		formData.value.userId = user.id as number
+		userPickerVisible.value = false
+	}
+
+	// 获取已选关联账户名称
+	const getSelectedUserName = () : string => {
+		if (formData.value.userId <= 0) return '请选择关联账户'
+		const user = userSelectList.value.find((u: any) => u.id === formData.value.userId)
+		return user ? (user.nickname || ('用户' + user.id)) : '请选择关联账户'
+	}
+
+	// 提交表单
+	const submitForm = () : void => {
+		if (!hasInvitePermission.value) {
+			noPermissionVisible.value = true
+			return
+		}
+		if (submitting.value) return
+		if (!formData.value.nickname) {
+			uni.showToast({ title: '请输入主播昵称', icon: 'none' })
+			return
+		}
+		if (!formData.value.anchorId) {
+			uni.showToast({ title: '请输入主播ID', icon: 'none' })
+			return
+		}
+		if (!formData.value.phone) {
+			uni.showToast({ title: '请输入手机号', icon: 'none' })
+			return
+		}
+		if (!formData.value.gender) {
+			uni.showToast({ title: '请选择性别', icon: 'none' })
+			return
+		}
+		if (!formData.value.inviterId) {
+			uni.showToast({ title: isAdmin.value ? '请输入邀请人ID' : '邀请人ID异常', icon: 'none' })
+			return
+		}
+		if (platformId.value <= 0) {
+			uni.showToast({ title: '平台信息异常', icon: 'none' })
+			return
+		}
+
+		submitting.value = true
+
+		// 根据平台类型调用不同接口
+		if (platformType.value === 'live') {
+			// 直播主播：调用 live-anchors 接口
+			addLiveAnchorApi({
+				platformId: platformId.value,
+				nickname: formData.value.nickname,
+				anchorId: formData.value.anchorId,
+				realName: formData.value.realName,
+				phone: formData.value.phone,
+				commissionRate: formData.value.commission ? Number(formData.value.commission) : 50,
+				unionId: Number(formData.value.inviterId),
+				userId: formData.value.userId || undefined
+			}).then(() => {
+				uni.showToast({ title: '提交成功', icon: 'success' })
+				formData.value = {
+					nickname: '',
+					anchorId: '',
+					realName:'',
+					phone: '',
+					gender: '',
+					inviterId: !isAdmin.value ? String(currentUserId.value) : '',
+					commission: '',
+					userId: 0
+				}
+			}).catch((err: any) => {
+				// console.error('提交直播入职失败:', err)
+				const errMsg = (err != null && (err.message as string) != null) ? (err.message as string) : '提交失败，请重试'
+				if (!err || !err.code || ((err.code as number) !== 400 && (err.code as number) !== 422)) {
+					uni.showToast({ title: errMsg, icon: 'none' })
+				}
+			}).finally(() => {
+				submitting.value = false
+			})
+		} else {
+			// 语聊主播：调用 anchors 接口（原有逻辑）
+			addAnchorApi({
+				platformId: platformId.value,
+				nickname: formData.value.nickname,
+				anchorId: formData.value.anchorId,
+				realName: formData.value.realName,
+				phone: formData.value.phone,
+				gender: genderMap[formData.value.gender],
+				unionId: Number(formData.value.inviterId)
+			}).then(() => {
+				uni.showToast({ title: '提交成功', icon: 'success' })
+				formData.value = {
+					nickname: '',
+					anchorId: '',
+					phone: '',
+					realName:'',
+					gender: '',
+					inviterId: !isAdmin.value ? String(currentUserId.value) : '',
+					commission: '',
+					userId: 0
+				}
+			}).catch((err: any) => {
+				// console.error('提交入职失败:', err)
+				const errMsg = (err != null && (err.message as string) != null) ? (err.message as string) : '提交失败，请重试'
+				if (!err || !err.code || ((err.code as number) !== 400 && (err.code as number) !== 422)) {
+					uni.showToast({ title: errMsg, icon: 'none' })
+				}
+			}).finally(() => {
+				submitting.value = false
+			})
+		}
+	}
+</script>
+
+<style>
+	.container {
+		flex: 1;
+		background-color: #F5F5F5;
+	}
+
+	/* 顶部导航栏 */
+	.nav-bar {
+		flex-direction: row;
+		justify-content: space-between;
+		align-items: center;
+		padding: 60rpx 20rpx 20rpx 20rpx;
+		background-color: #FFFFFF;
+		border-bottom: 1rpx solid #EEEEEE;
+	}
+
+	.back-btn {
+		width: 60rpx;
+		height: 60rpx;
+		justify-content: center;
+		align-items: center;
+	}
+
+	.back-icon {
+		font-size: 48rpx;
+		color: #333333;
+	}
+
+	.nav-title {
+		font-size: 34rpx;
+		color: #333333;
+		font-weight: 500;
+	}
+
+	.nav-placeholder {
+		width: 60rpx;
+	}
+
+	/* 表单区域 */
+	.form-section {
+		padding: 30rpx;
+	}
+
+	/* 表单头部 */
+	.form-header {
+		flex-direction: row;
+		justify-content: space-between;
+		align-items: center;
+		background: linear-gradient(135deg, #F5C76B, #E8B84D);
+		border-radius: 20rpx 20rpx 0 0;
+		padding: 30rpx;
+	}
+
+	.header-title {
+		font-size: 32rpx;
+		color: #8B6914;
+		font-weight: bold;
+	}
+
+	.anchor-btn {
+		font-size: 26rpx;
+		color: #8B6914;
+		background-color: rgba(255, 255, 255, 0.6);
+		padding: 12rpx 24rpx;
+		border-radius: 30rpx;
+	}
+
+	/* 表单卡片 */
+	.form-card {
+		background: linear-gradient(180deg, #F5C76B 0%, #F0E6D3 30%);
+		padding: 20rpx 30rpx 40rpx 30rpx;
+		border-radius: 0 0 20rpx 20rpx;
+	}
+
+	.form-item {
+		flex-direction: row;
+		align-items: center;
+		background-color: #FFFFFF;
+		border-radius: 16rpx;
+		padding: 24rpx 30rpx;
+		margin-bottom: 20rpx;
+	}
+
+	.form-label {
+		width: 160rpx;
+		font-size: 28rpx;
+		color: #8B6914;
+		font-weight: 500;
+	}
+
+	.form-value {
+		flex: 1;
+		font-size: 28rpx;
+		color: #333333;
+	}
+
+	.form-value.placeholder {
+		color: #CCCCCC;
+	}
+
+	.form-arrow {
+		font-size: 36rpx;
+		color: #CCCCCC;
+		margin-left: 10rpx;
+	}
+
+	.form-input {
+		flex: 1;
+		font-size: 28rpx;
+		color: #333333;
+	}
+
+	.form-input::placeholder {
+		color: #CCCCCC;
+	}
+
+	.form-input.disabled {
+		color: #999999;
+	}
+
+	/* 提交按钮 */
+	.submit-btn {
+		margin-top: 40rpx;
+		background: linear-gradient(135deg, #F5C76B, #E8B84D);
+		border-radius: 50rpx;
+		padding: 30rpx 0;
+		align-items: center;
+	}
+
+	.submit-text {
+		font-size: 32rpx;
+		color: #8B6914;
+		font-weight: bold;
+	}
+
+	/* 弹窗遮罩 */
+	.modal-mask {
+		position: fixed;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		background-color: rgba(0, 0, 0, 0.5);
+		z-index: 998;
+	}
+
+	/* 性别选择弹窗 */
+	.gender-modal {
+		position: fixed;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		background-color: #FFFFFF;
+		border-radius: 24rpx 24rpx 0 0;
+		z-index: 999;
+		padding-bottom: 40rpx;
+	}
+
+	.modal-header {
+		flex-direction: row;
+		justify-content: space-between;
+		align-items: center;
+		padding: 30rpx;
+		border-bottom: 1rpx solid #EEEEEE;
+	}
+
+	.cancel-btn {
+		font-size: 28rpx;
+		color: #F5C76B;
+	}
+
+	.modal-title {
+		font-size: 32rpx;
+		color: #333333;
+		font-weight: 500;
+	}
+
+	.close-btn {
+		font-size: 40rpx;
+		color: #999999;
+		width: 60rpx;
+		text-align: center;
+	}
+
+	.gender-list {
+		padding: 10rpx 0;
+	}
+
+	.gender-item {
+		flex-direction: row;
+		justify-content: space-between;
+		align-items: center;
+		padding: 28rpx 40rpx;
+		border-bottom: 1rpx solid #F5F5F5;
+	}
+
+	.gender-item.selected {
+		background-color: #FFF8E7;
+	}
+
+	.gender-text {
+		font-size: 30rpx;
+		color: #333333;
+	}
+
+	.gender-item.selected .gender-text {
+		color: #F5C76B;
+		font-weight: bold;
+	}
+
+	.gender-check {
+		font-size: 32rpx;
+		color: #F5C76B;
+		font-weight: bold;
+	}
+
+	/* 关联账户选择弹窗 */
+	.user-modal {
+		position: fixed;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		background-color: #FFFFFF;
+		border-radius: 24rpx 24rpx 0 0;
+		z-index: 999;
+		padding-bottom: 40rpx;
+	}
+
+	.user-list {
+		padding: 10rpx 0;
+	}
+
+	.user-item {
+		flex-direction: row;
+		justify-content: space-between;
+		align-items: center;
+		padding: 28rpx 40rpx;
+		border-bottom: 1rpx solid #F5F5F5;
+	}
+
+	.user-item.selected {
+		background-color: #FFF8E7;
+	}
+
+	.user-text {
+		font-size: 30rpx;
+		color: #333333;
+	}
+
+	.user-item.selected .user-text {
+		color: #F5C76B;
+		font-weight: bold;
+	}
+
+	.user-check {
+		font-size: 32rpx;
+		color: #F5C76B;
+		font-weight: bold;
+	}
+
+	/* 无权限提示弹窗 */
+	.no-permission-modal {
+		position: fixed;
+		left: 0;
+		right: 0;
+		top: 40%;
+		margin-left: 60rpx;
+		margin-right: 60rpx;
+		background-color: #FFFFFF;
+		border-radius: 24rpx;
+		z-index: 999;
+		padding: 50rpx 40rpx;
+		align-items: center;
+	}
+
+	.no-permission-icon {
+		font-size: 80rpx;
+		margin-bottom: 20rpx;
+	}
+
+	.no-permission-title {
+		font-size: 34rpx;
+		color: #333333;
+		font-weight: bold;
+		margin-bottom: 16rpx;
+	}
+
+	.no-permission-desc {
+		font-size: 26rpx;
+		color: #999999;
+		text-align: center;
+		line-height: 1.6;
+		margin-bottom: 40rpx;
+	}
+
+	.no-permission-btn {
+		width: 100%;
+		align-items: center;
+		background-color: #F5C76B;
+		border-radius: 44rpx;
+		padding: 24rpx 0;
+	}
+
+	.no-permission-btn-text {
+		font-size: 30rpx;
+		color: #8B6914;
+		font-weight: bold;
+	}
+</style>

@@ -1,0 +1,133 @@
+<template>
+	<view class="container">
+		<!-- 顶部导航栏 -->
+		<view class="nav-bar">
+			<view class="back-btn" @click="goBack">
+				<text class="back-icon">‹</text>
+			</view>
+			<text class="nav-title">陪聊公约</text>
+			<view class="nav-placeholder"></view>
+		</view>
+
+		<!-- 内容区域 -->
+		<scroll-view class="content" scroll-y>
+			<!-- 头部装饰图 -->
+			<!-- <image class="header-img" src="/static/yd-CdXXjV5T.png" mode="widthFix"></image> -->
+
+			<!-- 公约内容 -->
+			<view class="section">
+				<text class="paragraph">为响应国家绿色净网专项行动，维护绿色健康良好的环境，平台采用AI智能检测+人工审核巡查持续加大加强内容监管力度，坚决抵制影响未成年人成长的不健康内容，坚持践行社会主义核心价值观，对任何形式的违法违规、低俗涉黄、暴力血腥内容严厉打击，一经发现，包含但不限于封禁账号和设备包括推荐人等！</text>
+				<text class="paragraph">请广大用户自觉自律，遵守文明公约，规范聊天内容，维护平台健康有序的良好生态。否则，平台将有权采取包括但不限于删除违规内容、禁言、冻结账户、永久封禁账户和设备包括推荐人等！情节严重的，将依法追究法律责任并及时上报有关行政部门。</text>
+				<text class="paragraph">欢迎大家共同监督，及时举报违规行为。</text>
+			</view>
+
+			<!-- 警示区域 -->
+			<view class="warning-box">
+				<text class="warning-title">⚠️ 重要提醒</text>
+				<text class="warning-text">违反公约的用户将受到严肃处理，请务必遵守相关规定，共同维护绿色健康的网络环境。</text>
+			</view>
+		</scroll-view>
+	</view>
+</template>
+
+<script setup lang="uts">
+	// 返回上一页
+	const goBack = () : void => {
+		const pages = getCurrentPages()
+		if (pages.length > 1) {
+			uni.navigateBack()
+		} else {
+			uni.switchTab({
+				url: '/pages/news/news'
+			})
+		}
+	}
+</script>
+
+<style>
+	.container {
+		flex: 1;
+		background-color: #FFFFFF;
+	}
+
+	/* 顶部导航栏 */
+	.nav-bar {
+		flex-direction: row;
+		align-items: center;
+		justify-content: space-between;
+		padding: 60rpx 20rpx 20rpx 20rpx;
+		background-color: #FFFFFF;
+		border-bottom: 1rpx solid #EEEEEE;
+	}
+
+	.back-btn {
+		width: 60rpx;
+		height: 60rpx;
+		justify-content: center;
+		align-items: center;
+	}
+
+	.back-icon {
+		font-size: 48rpx;
+		color: #333333;
+	}
+
+	.nav-title {
+		font-size: 34rpx;
+		color: #333333;
+		font-weight: 500;
+	}
+
+	.nav-placeholder {
+		width: 60rpx;
+	}
+
+	/* 内容区域 */
+	.content {
+		flex: 1;
+		padding: 30rpx;
+	}
+
+	/* 头部装饰图 */
+	.header-img {
+		width: 100%;
+		border-radius: 16rpx;
+		margin-bottom: 30rpx;
+	}
+
+	.section {
+		margin-bottom: 40rpx;
+	}
+
+	.paragraph {
+		font-size: 28rpx;
+		color: #666666;
+		line-height: 2;
+		margin-bottom: 24rpx;
+		text-indent: 0;
+		text-align: justify;
+	}
+
+	/* 警示区域 */
+	.warning-box {
+		background: linear-gradient(135deg, #FFF3E0, #FFE0B2);
+		border-left: 8rpx solid #FF9800;
+		border-radius: 12rpx;
+		padding: 30rpx;
+		margin-top: 20rpx;
+	}
+
+	.warning-title {
+		font-size: 30rpx;
+		color: #E65100;
+		font-weight: bold;
+		margin-bottom: 16rpx;
+		display: block;
+	}
+
+	.warning-text {
+		font-size: 26rpx;
+		color: #BF360C;
+		line-height: 1.8;
+	}
+</style>

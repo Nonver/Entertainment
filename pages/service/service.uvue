@@ -1,0 +1,251 @@
+<template>
+	<view class="container">
+		<!-- 顶部导航栏 - 融入金色渐变背景 -->
+		<view class="nav-bar">
+			<view class="back-btn" @click="goBack">
+				<text class="back-icon">‹</text>
+			</view>
+			<text class="nav-title">客服接待</text>
+			<view class="nav-placeholder"></view>
+		</view>
+
+		<!-- 金色头部区域 + 耳机图 -->
+		<view class="header-section">
+			<image class="headphone-img" src="/static/earphone-DkpjgGJC.svg" mode="aspectFit" />
+		</view>
+
+		<!-- 白色卡片 -->
+		<view class="card">
+			<!-- 联系方式列表 -->
+			<view class="contact-list">
+				<view class="contact-item" @click="callPhone">
+					<text class="contact-text">客服电话：{{ servicePhone }}</text>
+				</view>
+				<view class="contact-divider"></view>
+				<view class="contact-item" @click="copyWechat">
+					<text class="contact-text">客服微信：{{ serviceWechat }}</text>
+				</view>
+			</view>
+
+			<!-- 客服图片区域 -->
+			<view class="service-area">
+				<image class="service-img" :src="serviceQr || '/static/客服图片_20250418192905A062.jpg'" mode="aspectFit" />
+				<view class="download-btn" @click="saveServiceImage">
+					<text class="download-text">下载本地</text>
+				</view>
+			</view>
+		</view>
+	</view>
+</template>
+
+<script setup lang="uts">
+	import { onShow } from "@dcloudio/uni-app";
+	import { checkLogin } from "@/utils/auth.uts";
+	import { getSystemConfigApi, type SystemConfig } from "@/utils/api.uts"
+
+	const servicePhone = ref<string>('')
+	const serviceWechat = ref<string>('')
+	const serviceQr = ref<string>('')
+
+	onShow(() => {
+		checkLogin()
+		loadServiceConfig()
+	})
+
+	// 加载客服配置
+	const loadServiceConfig = () => {
+		getSystemConfigApi().then((config : SystemConfig) => {
+			servicePhone.value = config.service_phone || ''
+			serviceWechat.value = config.service_wechat || ''
+			serviceQr.value = config.service_qr || ''
+		}).catch((_err : any) => {})
+	}
+
+	const goBack = () : void => {
+		// 直接回首页（避免回到 service-tab 壳页面触发循环跳转）
+		uni.switchTab({ url: '/pages/index/index' })
+	}
+
+	const callPhone = () : void => {
+		if (servicePhone.value === '') {
+			uni.showToast({ title: '暂无电话', icon: 'none' })
+			return
+		}
+		uni.makePhoneCall({
+			phoneNumber: servicePhone.value,
+			fail: (err : any) => {
+				if (String(err.errMsg).indexOf('cancel') === -1) {
+					uni.showToast({ title: '拨打失败', icon: 'none' })
+				}
+			}
+		})
+	}
+
+	const copyWechat = () : void => {
+		if (serviceWechat.value === '') {
+			uni.showToast({ title: '暂无微信', icon: 'none' })
+			return
+		}
+		uni.setClipboardData({
+			data: serviceWechat.value,
+			success: () => { uni.showToast({ title: '已复制微信号', icon: 'success' }) },
+			fail: () => { uni.showToast({ title: '复制失败', icon: 'none' }) }
+		})
+	}
+
+	const saveServiceImage = () : void => {
+		const qrUrl = serviceQr.value
+		if (qrUrl === '') {
+			uni.showToast({ title: '暂无二维码', icon: 'none' })
+			return
+		}
+		// #ifdef H5
+		try {
+			const link = document.createElement('a')
+			link.href = qrUrl
+			link.download = '上宸互娱客服二维码.jpg'
+			link.click()
+			uni.showToast({ title: '正在下载...', icon: 'success' })
+		} catch (e) {
+			uni.showToast({ title: '下载失败，请长按保存', icon: 'none' })
+		}
+		// #endif
+		// #ifndef H5
+		uni.showLoading({ title: '保存中...' })
+		uni.getImageInfo({
+			src: qrUrl,
+			success: (res : GetImageInfoSuccessCallbackResult) => {
+				uni.saveImageToPhotosAlbum({
+					filePath: res.path,
+					success: () => {
+						uni.hideLoading()
+						uni.showToast({ title: '已保存到相册', icon: 'success' })
+					},
+					fail: (err : any) => {
+						uni.hideLoading()
+						if (String(err.errMsg).indexOf('auth deny') !== -1 || String(err.errMsg).indexOf('authorize') !== -1) {
+							uni.showModal({ title: '提示', content: '需要您授权保存相册权限', showCancel: false })
+						} else {
+							uni.showToast({ title: '保存失败', icon: 'none' })
+						}
+					}
+				})
+			},
+			fail: () => { uni.hideLoading(); uni.showToast({ title: '图片加载失败', icon: 'none' }) }
+		})
+		// #endif
+	}
+</script>
+
+<style>
+	.container {
+		flex: 1;
+		background-color: #F5F0E8;
+	}
+
+	/* 导航栏 - 金色渐变背景 */
+	.nav-bar {
+		flex-direction: row;
+		align-items: center;
+		justify-content: space-between;
+		padding: 24rpx 24rpx 16rpx 24rpx;
+		
+	}
+
+	.back-btn {
+		width: 70rpx;
+		height: 70rpx;
+		justify-content: center;
+		align-items: center;
+	}
+
+	.back-icon {
+		font-size: 40rpx;
+		color: #4A3B1A;
+		font-weight: 300;
+	}
+
+	.nav-title {
+		font-size: 32rpx;
+		color: #4A3B1A;
+		font-weight: 600;
+	}
+
+	.nav-placeholder {
+		width: 70rpx;
+	}
+
+	/* 金色头部区域 - 纯装饰，只放耳机图 */
+	.header-section {
+		background: linear-gradient(180deg, #F5C76B 0%, #e8b84d45 100%);
+		height: 350rpx;
+		position: relative;
+	}
+
+	.headphone-img {
+		position: absolute;
+		right: 30rpx;
+		top: -80rpx;
+		width: 250rpx;
+		height: 350rpx;
+	}
+
+	/* 白色卡片 - 向上覆盖 */
+	.card {
+		margin: -40rpx 24rpx 60rpx 24rpx;
+		background-color: #FFFFFF;
+		border-radius: 20rpx;
+		padding: 36rpx 28rpx 48rpx 28rpx;
+		box-shadow: 0 6rpx 20rpx rgba(0, 0, 0, 0.08);
+		position: relative;
+		z-index: 2;
+	}
+
+	/* 联系列表 */
+	.contact-list {
+		margin-bottom: 36rpx;
+	}
+
+	.contact-item {
+		padding: 26rpx 12rpx;
+	}
+
+	.contact-text {
+		font-size: 28rpx;
+		color: #333333;
+	}
+
+	.contact-divider {
+		height: 1rpx;
+		background-color: #F0EDE6;
+	}
+
+	/* 客服图片区域 */
+	.service-area {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+	}
+
+	.service-img {
+		width: 280rpx;
+		height: 280rpx;
+		border-radius: 12rpx;
+	}
+
+	.download-btn {
+		margin-top: 24rpx;
+		width: 200rpx;
+		height: 64rpx;
+		border-radius: 32rpx;
+		background-color: #E8C46A;
+		justify-content: center;
+		align-items: center;
+	}
+
+	.download-text {
+		font-size: 26rpx;
+		color: #FFFFFF;
+		font-weight: 500;
+	}
+</style>

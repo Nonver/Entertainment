@@ -1,0 +1,98 @@
+/**
+ * 登录认证工具
+ * 使用 uni.setStorage 模拟 Cookie 存储登录状态
+ */
+
+const TOKEN_KEY = 'auth_token'
+const USER_INFO_KEY = 'user_info'
+
+// 设置登录凭证（模拟设置 Cookie）
+export const setToken = (token: string): void => {
+	console.log('[Auth] setToken:', token ? 'token exists, length=' + token.length : 'EMPTY')
+	uni.setStorageSync(TOKEN_KEY, token)
+}
+
+// 获取登录凭证
+export const getToken = (): string | null => {
+	const token = uni.getStorageSync(TOKEN_KEY) || null
+	console.log('[Auth] getToken:', token ? 'exists, length=' + (token as string).length : 'null')
+	return token
+}
+
+// 清除登录凭证（退出登录）
+export const clearToken = (): void => {
+	uni.removeStorageSync(TOKEN_KEY)
+	uni.removeStorageSync(USER_INFO_KEY)
+}
+
+// 检查是否已登录
+export const isLoggedIn = (): boolean => {
+	const token = getToken()
+	// console.log('[Auth] isLoggedIn token:', token ? 'exists(' + (token as string).substring(0,10) + '...)' : 'null')
+	return token !== null && token !== ''
+}
+
+// 保存用户信息
+export const setUserInfo = (userInfo: any): void => {
+	uni.setStorageSync(USER_INFO_KEY, JSON.stringify(userInfo))
+}
+
+// 获取用户信息
+export const getUserInfo = (): any | null => {
+	const data = uni.getStorageSync(USER_INFO_KEY)
+	if (data) {
+		try {
+			return JSON.parse(data)
+		} catch (e) {
+			return null
+		}
+	}
+	return null
+}
+
+// 需要登录的页面列表（这些页面需要登录才能访问）
+const AUTH_PAGES = [
+	'/pages/index/index',
+	'/pages/news/news',
+	'/pages/performance/performance',
+	'/pages/service-tab/service-tab',
+	'/pages/mine/mine',
+	'/pages/team/team',
+	'/pages/withdraw/withdraw',
+	'/pages/withdraw-history/withdraw-history',
+	'/pages/withdraw-account/withdraw-account',
+	'/pages/finance-detail/finance-detail',
+	'/pages/promote/promote',
+	'/pages/rules/rules',
+	'/pages/notice/notice',
+	'/pages/anchor-list/anchor-list',
+	'/pages/service/service',
+	'/pages/anchor-resource/anchor-resource',
+	'/pages/anchor-resource/anchor-resource-form',
+	'/pages/anchor-resource/anchor-resource-list',
+	'/pages/anchor-resource/anchor-resource-detail',
+	'/pages/my-performance/my-performance'
+]
+
+// 检查页面是否需要登录
+export const isAuthPage = (path: string): boolean => {
+	// 处理路径格式
+	const cleanPath = path.replace(/^\//, '')
+	for (const authPage of AUTH_PAGES) {
+		if (cleanPath.includes(authPage.replace(/^\//, ''))) {
+			return true
+		}
+	}
+	return false
+}
+
+// 页面登录检查（在需要登录的页面 onShow 中调用）
+export const checkLogin = (): boolean => {
+	console.log('[Auth] checkLogin called, isLoggedIn:', isLoggedIn())
+	if (!isLoggedIn()) {
+		console.log('[Auth] redirecting to login!')
+		uni.reLaunch({ url: '/pages/login/login' })
+		return false
+	}
+	return true
+}

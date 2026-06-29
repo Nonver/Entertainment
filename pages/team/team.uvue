@@ -1,0 +1,889 @@
+<template>
+	<view class="container">
+		<!-- 顶部导航栏 -->
+		<view class="nav-bar">
+			<view class="back-btn" @click="goBack">
+				<text class="back-icon">‹</text>
+			</view>
+			<text class="nav-title">我的团队</text>
+			<view class="nav-placeholder"></view>
+		</view>
+
+		<!-- 用户信息区域 -->
+		<view class="user-section">
+			<image class="avatar" :src="userAvatar" mode="aspectFill" />
+			<view class="user-info">
+				<text class="username">{{userName}}</text>
+				<text class="user-id">ID:{{userId}}</text>
+			</view>
+			<view class="action-btns">
+				<view class="action-item" @click="showReferrer">
+					<image class="action-icon" src="/static/personal.png" mode="aspectFit" />
+					<text class="action-text">我的推荐人</text>
+				</view>
+				<view class="action-item" @click="copyReferrerWechat">
+					<image class="action-icon" src="/static/service.png" mode="aspectFit" />
+					<text class="action-text">推荐人微信</text>
+				</view>
+			</view>
+		</view>
+
+		<!-- 数据统计卡片 -->
+		<view class="stats-card">
+			<view class="stats-row">
+				<view class="stats-item">
+					<text class="stats-label">我的直推</text>
+					<text class="stats-value">{{ stats.directPush }}</text>
+				</view>
+				<view class="stats-item">
+					<text class="stats-label">我的间推</text>
+					<text class="stats-value">{{ stats.indirectPush }}</text>
+				</view>
+				<view class="stats-item">
+					<text class="stats-label">我的团队</text>
+					<text class="stats-value">{{ stats.team }}</text>
+				</view>
+			</view>
+			<view class="stats-divider"></view>
+			<view class="stats-row">
+				<view class="stats-item">
+					<text class="stats-label">我的主播</text>
+					<text class="stats-value">{{ stats.myAnchors }}</text>
+				</view>
+				<view class="stats-item">
+					<text class="stats-label">直推主播</text>
+					<text class="stats-value">{{ stats.directAnchors }}</text>
+				</view>
+				<view class="stats-item">
+					<text class="stats-label">主播数量</text>
+					<text class="stats-value">{{ stats.anchorCount }}</text>
+				</view>
+			</view>
+		</view>
+
+		<!-- 平台切换 + 搜索 -->
+		<view class="filter-section">
+			<view class="platform-bar">
+				<image class="platform-logo" :src="currentPlatform.logo" mode="aspectFit" />
+				<text class="platform-name">{{ currentPlatform.name }}</text>
+				<view class="switch-btn" @click="showPlatformPicker = true">
+					<text class="switch-text">切换平台</text>
+				</view>
+			</view>
+			<view class="search-bar">
+				<text class="search-icon">🔍</text>
+				<input class="search-input" type="text" placeholder="请输入代理ID或昵称" :value="searchKeyword" @input="onSearchInput" confirm-type="search" @confirm="doSearch" />
+			</view>
+		</view>
+
+		<!-- Tab 切换 -->
+		<view class="tab-section">
+			<view
+				v-for="(tab, index) in tabs"
+				:key="index"
+				class="tab-item"
+				:class="{ 'tab-active': currentTab === index }"
+				@click="switchTab(index)"
+			>
+				<text class="tab-text" :class="{ 'tab-text-active': currentTab === index }">{{ tab }}</text>
+			</view>
+		</view>
+
+		<!-- 主播列表（tab=0 我的主播） -->
+		<scroll-view v-if="currentTab === 0" class="anchor-list" scroll-y>
+			<view v-for="(anchor, index) in filteredAnchors" :key="index" class="anchor-card">
+				<view class="anchor-header">
+					<image class="anchor-avatar" :src="anchor.userImg || '/static/userinfo.png'" mode="aspectFill" />
+					<view class="anchor-info">
+						<text class="anchor-name">主播：{{ anchor.nickname }}</text>
+						<text class="anchor-id">ID：{{ anchor.anchorId }}</text>
+					</view>
+				</view>
+				<view class="anchor-stats">
+					<view class="anchor-stat-item">
+						<text class="stat-label">今日个人业绩：</text>
+						<text class="stat-value">{{ anchor.todayRevenue }}</text>
+					</view>
+					<view class="anchor-stat-item">
+						<text class="stat-label">个人总业绩：</text>
+						<text class="stat-value">{{ anchor.totalRevenue }}</text>
+					</view>
+				</view>
+			</view>
+			<view v-if="filteredAnchors.length === 0" class="empty-state">
+				<text class="empty-text">暂无数据</text>
+			</view>
+		</scroll-view>
+
+		<!-- 代理列表（tab=1 直推代理, tab=2 间推代理） -->
+		<scroll-view v-if="currentTab === 1 || currentTab === 2" class="anchor-list" scroll-y>
+			<view v-for="(agent, index) in filteredAgents" :key="index" class="agent-card">
+				<view class="agent-header">
+					<image class="agent-avatar" :src="agent.avatar || '/static/userinfo.png'" mode="aspectFill" />
+					<view class="agent-info">
+						<text class="agent-name">{{ agent.nickname }}</text>
+						<text class="agent-phone">{{ agent.phoneMasked || agent.phone }}</text>
+					</view>
+					<text class="agent-status" :class="agent.status === 1 ? 'status-normal' : 'status-disabled'">{{ agent.statusText }}</text>
+				</view>
+				<view class="agent-stats">
+					<view class="agent-stat-item">
+						<text class="stat-label">累计佣金：</text>
+						<text class="stat-value">¥{{ agent.agentCommission }}</text>
+					</view>
+					<view class="agent-stat-item">
+						<text class="stat-label">注册时间：</text>
+						<text class="stat-value">{{ agent.createdAt }}</text>
+					</view>
+				</view>
+			</view>
+			<view v-if="filteredAgents.length === 0" class="empty-state">
+				<text class="empty-text">暂无数据</text>
+			</view>
+		</scroll-view>
+
+		<!-- 切换平台弹窗 -->
+		<view v-if="showPlatformPicker" class="popup-mask" @click="showPlatformPicker = false">
+			<view class="popup-content" @click.stop>
+				<view class="popup-header">
+					<text class="popup-cancel" @click="showPlatformPicker = false">取消</text>
+					<text class="popup-title">切换平台</text>
+					<text class="popup-close" @click="showPlatformPicker = false">✕</text>
+				</view>
+				<scroll-view class="popup-list" scroll-y>
+					<view
+						v-for="(platform, index) in platforms"
+						:key="index"
+						class="popup-item"
+						@click="selectPlatform(index)"
+					>
+						<image class="popup-item-logo" :src="platform.logo" mode="aspectFit" />
+						<text class="popup-item-name">{{ platform.name }}</text>
+					</view>
+				</scroll-view>
+			</view>
+		</view>
+	</view>
+</template>
+
+<script setup lang="uts">
+	import { ref, computed } from "vue";
+	import { getUserInfo } from "@/utils/auth.uts";
+	import {
+		getPlatformsApi, getMyAccountStatsApi, getAnchorsApi, getUsersApi, checkOrgApi,
+		TeamMemberItem, AgentItem, MyAccountStats, AnchorItem, AnchorListResult,
+		UserItem, UserListResult
+	} from "@/utils/api.uts";
+
+	// 当前登录用户信息
+	const userInfo = getUserInfo()
+	const userName = ref<string>(userInfo != null ? (userInfo.nickname as string) || (userInfo.username as string) || '' : '')
+	const userId = ref<number>(userInfo != null ? (userInfo.id as number) : 0)
+	const userOrgId = ref<number>(userInfo != null ? (userInfo.orgId as number) || 0 : 0)
+
+	// 用户头像
+	const userAvatar = ref<string>(userInfo != null && (userInfo.avatar as string) ? (userInfo.avatar as string) : '/static/userinfo.png')
+
+	// 推荐人信息
+	const referrer = ref<{referrerId: string, referrerName: string} | null>(null)
+
+	// 统计数据
+	const stats = ref({
+		directPush: 0,
+		indirectPush: 0,
+		team: 0,
+		myAnchors: 0,
+		directAnchors: 0,
+		anchorCount: 0
+	})
+
+	// 平台列表
+	const platforms = ref<{id: number, name: string, logo: string}[]>([])
+	const currentPlatform = ref<{id: number, name: string, logo: string}>({
+		id: 0,
+		name: '全部平台',
+		logo: '/static/default-platform.png'
+	})
+	const showPlatformPicker = ref<boolean>(false)
+
+	// Tab
+	const tabs = ref<string[]>(['我的主播', '直推代理', '间推代理'])
+	const currentTab = ref<number>(0)
+
+	// 搜索
+	const searchKeyword = ref<string>('')
+
+	// 列表数据
+	const anchors = ref<TeamMemberItem[]>([])
+	const agents = ref<AgentItem[]>([])
+
+	// 过滤后的主播列表
+	const filteredAnchors = computed<Array<TeamMemberItem>>(() : Array<TeamMemberItem> => {
+		let list = anchors.value
+		if (searchKeyword.value !== '') {
+			const key = searchKeyword.value.toLowerCase()
+			list = list.filter((item : TeamMemberItem) : boolean => {
+				return (item.anchorId || '').toLowerCase().indexOf(key) !== -1 ||
+					item.nickname.toLowerCase().indexOf(key) !== -1
+			})
+		}
+		return list
+	})
+
+	// 过滤后的代理列表
+	const filteredAgents = computed<Array<AgentItem>>(() : Array<AgentItem> => {
+		let list = agents.value
+		if (searchKeyword.value !== '') {
+			const key = searchKeyword.value.toLowerCase()
+			list = list.filter((item : AgentItem) : boolean => {
+				return item.nickname.toLowerCase().indexOf(key) !== -1 ||
+					String(item.id).indexOf(key) !== -1 ||
+					(item.phone || '').indexOf(key) !== -1
+			})
+		}
+		return list
+	})
+
+	// ========== 数据加载 ==========
+
+	// 加载平台列表
+	const loadPlatformList = () : void => {
+		getPlatformsApi().then((list) => {
+			if (list.length > 0) {
+				const plats = list.map((item) => ({
+					id: item.id,
+					name: item.platformName,
+					logo: item.platformImg || '/static/default-platform.png'
+				}))
+				platforms.value = plats
+				// 默认选中第一个平台
+				currentPlatform.value = { ...plats[0] }
+				loadAllData()
+			}
+		}).catch((err) => {
+			console.error('加载平台列表失败:', err)
+			// 平台加载失败也尝试加载数据（platformId=0 表示全部）
+			loadAllData()
+		})
+	}
+
+	// 加载所有数据
+	const loadAllData = () : void => {
+		loadStats()
+		loadAnchors()
+	}
+
+	// 加载团队统计（使用 my-account-stats 接口）
+	const loadStats = () : void => {
+		getMyAccountStatsApi().then((result) => {
+			// subUserCount = 直推代理数（下级用户）
+			// anchorCount = 旗下主播数
+			const directPush = result.subUserCount || 0
+			const myAnchors = result.anchorCount || 0
+
+			// 直推代理 + 间推代理需要从用户列表计算
+			// 先设置基础值，间推和直推主播后续通过用户列表补充
+			stats.value.directPush = directPush
+			stats.value.myAnchors = myAnchors
+			stats.value.anchorCount = myAnchors
+			stats.value.team = directPush + myAnchors
+			stats.value.directAnchors = myAnchors // 默认为我的主播数
+			stats.value.indirectPush = 0
+
+			// 加载用户列表来获取间推代理数和直推主播数
+			loadUserStats()
+		}).catch((err) => {
+			console.error('加载团队统计失败:', err)
+		})
+	}
+
+	// 从用户列表补充统计数据（间推代理数）
+	const loadUserStats = () : void => {
+		getUsersApi({ page: 1, pageSize: 1 }).then((result) => {
+			const totalUsers = result.total || 0
+			// totalUsers 是所有下级用户，其中 role=1 的是直推代理，role=2 的是间推代理
+			// 这里只能拿到总数，无法区分直推/间推，暂用总数作为团队人数
+			stats.value.team = totalUsers + stats.value.anchorCount
+			// 加载全部用户来区分直推/间推
+			getUsersApi({ page: 1, pageSize: 1000 }).then((fullResult) => {
+				let directCount = 0
+				let indirectCount = 0
+				for (const u of fullResult.list) {
+					if (u.role === 1) {
+						directCount++
+					} else if (u.role === 2) {
+						indirectCount++
+					}
+				}
+				stats.value.directPush = directCount
+				stats.value.indirectPush = indirectCount
+				stats.value.team = directCount + indirectCount + stats.value.anchorCount
+			}).catch(() => {})
+		}).catch(() => {})
+	}
+
+	// 加载主播列表
+	const loadAnchors = () : void => {
+		const params: any = {
+			status: 1  // 只显示审核通过的主播
+		}
+		if (currentPlatform.value.id > 0) {
+			params.platformId = currentPlatform.value.id
+		}
+		if (searchKeyword.value !== '') {
+			params.keyword = searchKeyword.value
+		}
+		params.page = 1
+		params.pageSize = 100
+
+		getAnchorsApi(params).then((result) => {
+			anchors.value = result.list.map((item) => ({
+				id: item.id,
+				anchorId: item.anchorId,
+				nickname: item.nickname,
+				userImg: item.userImg || item.avatar || '',
+				todayRevenue: '0',
+				totalRevenue: '0',
+				platformId: item.platformId,
+				platformName: item.platformName,
+				phone: item.phone || '',
+				status: typeof item.status === 'number' ? item.status : parseInt(item.status as string) || 0
+			}))
+		}).catch((err) => {
+			console.error('加载主播列表失败:', err)
+			anchors.value = []
+		})
+	}
+
+	// 加载代理列表
+	const loadAgents = () : void => {
+		const params: any = {
+			page: 1,
+			pageSize: 100
+		}
+		if (searchKeyword.value !== '') {
+			params.keyword = searchKeyword.value
+		}
+
+		getUsersApi(params).then((result) => {
+			// currentTab: 1=直推代理(role=1), 2=间推代理(role=2)
+			const filterRole = currentTab.value === 1 ? 1 : 2
+			agents.value = result.list
+				.filter((u) => u.role === filterRole)
+				.map((u) => ({
+					id: u.id,
+					nickname: u.nickname,
+					phone: u.phone,
+					phoneMasked: u.phoneMasked,
+					agentCommission: u.agentCommission || '0.00',
+					totalRecharge: u.totalRecharge || '0.00',
+					status: u.status,
+					statusText: u.statusText,
+					createdAt: u.createdAt,
+					avatar: u.avatar || ''
+				}))
+		}).catch((err) => {
+			console.error('加载代理列表失败:', err)
+			agents.value = []
+		})
+	}
+
+	// 加载推荐人信息
+	const loadReferrer = () : void => {
+		const orgId = userOrgId.value
+		if (orgId > 0) {
+			checkOrgApi(orgId).then((result) => {
+				if (result.valid) {
+					referrer.value = {
+						referrerId: String(orgId),
+						referrerName: result.nickname
+					}
+				}
+			}).catch((err) => {
+				console.error('加载推荐人失败:', err)
+			})
+		}
+	}
+
+	onLoad(() => {
+		loadPlatformList()
+		loadReferrer()
+	})
+
+	// ========== 事件处理 ==========
+
+	const goBack = () : void => {
+		const pages = getCurrentPages()
+		if (pages.length > 1) {
+			uni.navigateBack()
+		} else {
+			uni.switchTab({ url: '/pages/index/index' })
+		}
+	}
+
+	const showReferrer = () : void => {
+		if (referrer.value != null) {
+			uni.showModal({
+				title: '我的推荐人',
+				content: `ID：${referrer.value.referrerId}\n名称：${referrer.value.referrerName}`,
+				showCancel: false
+			})
+		} else {
+			uni.showToast({ title: '暂无推荐人信息', icon: 'none' })
+		}
+	}
+
+	const copyReferrerWechat = () : void => {
+		uni.showToast({ title: '请前往"我的"页面查看客服微信', icon: 'none' })
+	}
+
+	const selectPlatform = (index : number) : void => {
+		currentPlatform.value = { ...platforms.value[index] }
+		showPlatformPicker.value = false
+		loadAnchors()
+		if (currentTab.value !== 0) {
+			loadAgents()
+		}
+	}
+
+	const onSearchInput = (e : any) : void => {
+		searchKeyword.value = e.detail.value as string
+	}
+
+	const doSearch = () : void => {
+		loadAnchors()
+		if (currentTab.value !== 0) {
+			loadAgents()
+		}
+	}
+
+	const switchTab = (index : number) : void => {
+		currentTab.value = index
+		if (index === 0) {
+			loadAnchors()
+		} else {
+			loadAgents()
+		}
+	}
+</script>
+
+<style>
+	.container {
+		flex: 1;
+		background-color: #F5F0E8;
+	}
+
+	/* 导航栏 */
+	.nav-bar {
+		flex-direction: row;
+		align-items: center;
+		justify-content: space-between;
+		padding: 56rpx 24rpx 16rpx 24rpx;
+		background-color: #FFFFFF;
+	}
+
+	.back-btn {
+		width: 70rpx;
+		height: 70rpx;
+		justify-content: center;
+		align-items: center;
+	}
+
+	.back-icon {
+		font-size: 40rpx;
+		color: #333333;
+		font-weight: 300;
+	}
+
+	.nav-title {
+		font-size: 34rpx;
+		color: #333333;
+		font-weight: 600;
+	}
+
+	.nav-placeholder {
+		width: 70rpx;
+	}
+
+	/* 用户信息区 */
+	.user-section {
+		flex-direction: row;
+		align-items: center;
+		padding: 28rpx 24rpx;
+		background-color: #FFFFFF;
+	}
+
+	.avatar {
+		width: 96rpx;
+		height: 96rpx;
+		border-radius: 48rpx;
+		margin-right: 20rpx;
+	}
+
+	.user-info {
+		flex: 1;
+	}
+
+	.username {
+		font-size: 30rpx;
+		color: #333333;
+		font-weight: 500;
+	}
+
+	.user-id {
+		font-size: 24rpx;
+		color: #F0C275;
+		padding: 2rpx 12rpx;
+		border-radius: 8rpx;
+		margin-top: 4rpx;
+		display: inline-block;
+	}
+
+	.action-btns {
+		flex-direction: row;
+		gap: 32rpx;
+	}
+
+	.action-item {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+	}
+
+	.action-icon {
+		width: 52rpx;
+		height: 52rpx;
+	}
+
+	.action-text {
+		font-size: 22rpx;
+		color: #666666;
+		margin-top: 2rpx;
+	}
+
+	/* 统计卡片 */
+	.stats-card {
+		margin: 0 24rpx 20rpx 24rpx;
+		background: linear-gradient(135deg, #F5DCA0 0%, #F0C275 100%);
+		border-radius: 16rpx;
+		padding: 36rpx 30rpx;
+		box-shadow: 0 4rpx 12rpx rgba(240, 194, 117, 0.25);
+		margin-top: 20rpx;
+	}
+
+	.stats-row {
+		flex-direction: row;
+	}
+
+	.stats-row + .stats-row {
+		margin-top: 28rpx;
+	}
+
+	.stats-item {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		align-items: flex-start;
+	}
+
+	.stats-label {
+		font-size: 26rpx;
+		color: #7A5C18;
+		margin-bottom: 10rpx;
+	}
+
+	.stats-value {
+		font-size: 38rpx;
+		color: #4A3B1A;
+		font-weight: bold;
+	}
+
+	/* 平台切换 + 搜索 */
+	.filter-section {
+		padding: 0 24rpx;
+	}
+
+	.platform-bar {
+		flex-direction: row;
+		align-items: center;
+		background-color: #FFFFFF;
+		border-radius: 12rpx;
+		padding: 30rpx 30rpx;
+		margin-bottom: 16rpx;
+	}
+
+	.platform-logo {
+		width: 56rpx;
+		height: 56rpx;
+		border-radius: 8rpx;
+		margin-right: 14rpx;
+	}
+
+	.platform-name {
+		font-size: 28rpx;
+		color: #333333;
+		font-weight: 500;
+		flex: 1;
+	}
+
+	.switch-btn {
+		background-color: #F0C275;
+		border-radius: 24rpx;
+		padding: 10rpx 22rpx;
+	}
+
+	.switch-text {
+		font-size: 24rpx;
+		color: #FFFFFF;
+		font-weight: 500;
+	}
+
+	.search-bar {
+		flex-direction: row;
+		align-items: center;
+		background-color: #FFFFFF;
+		border-radius: 12rpx;
+		padding: 16rpx 20rpx;
+	}
+
+	.search-icon {
+		font-size: 28rpx;
+		margin-right: 10rpx;
+	}
+
+	.search-input {
+		flex: 1;
+		font-size: 26rpx;
+		color: #333333;
+	}
+
+	/* Tab 区域 */
+	.tab-section {
+		flex-direction: row;
+		padding: 24rpx 48rpx 16rpx 48rpx;
+	}
+
+	.tab-item {
+		flex: 1;
+		align-items: center;
+		padding-bottom: 14rpx;
+		border-bottom-width: 4rpx;
+		border-bottom-style: solid;
+		border-bottom-color: transparent;
+	}
+
+	.tab-active {
+		border-bottom-color: #F0C275;
+	}
+
+	.tab-text {
+		font-size: 28rpx;
+		color: #999999;
+	}
+
+	.tab-text-active {
+		color: #333333;
+		font-weight: 600;
+	}
+
+	/* 列表 */
+	.anchor-list {
+		flex: 1;
+		padding: 0 24rpx 30rpx 24rpx;
+	}
+
+	.anchor-card {
+		background-color: #FFFFFF;
+		border-radius: 16rpx;
+		padding: 28rpx 24rpx;
+		margin-bottom: 16rpx;
+		box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.03);
+	}
+
+	.anchor-header {
+		flex-direction: row;
+		align-items: center;
+		margin-bottom: 20rpx;
+	}
+
+	.anchor-avatar {
+		width: 72rpx;
+		height: 72rpx;
+		border-radius: 36rpx;
+		margin-right: 18rpx;
+	}
+
+	.anchor-info {
+		flex: 1;
+	}
+
+	.anchor-name {
+		font-size: 28rpx;
+		color: #333333;
+		font-weight: 500;
+	}
+
+	.anchor-id {
+		font-size: 24rpx;
+		color: #F0C275;
+		margin-top: 4rpx;
+	}
+
+	.anchor-stats {
+		flex-direction: row;
+	}
+
+	.anchor-stat-item {
+		flex: 1;
+	}
+
+	.stat-label {
+		font-size: 24rpx;
+		color: #999999;
+	}
+
+	.stat-value {
+		font-size: 28rpx;
+		color: #333333;
+		font-weight: 500;
+		margin-top: 4rpx;
+	}
+
+	/* 代理卡片 */
+	.agent-card {
+		background-color: #FFFFFF;
+		border-radius: 16rpx;
+		padding: 28rpx 24rpx;
+		margin-bottom: 16rpx;
+		box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.03);
+	}
+
+	.agent-header {
+		flex-direction: row;
+		align-items: center;
+		margin-bottom: 20rpx;
+	}
+
+	.agent-avatar {
+		width: 72rpx;
+		height: 72rpx;
+		border-radius: 36rpx;
+		margin-right: 18rpx;
+	}
+
+	.agent-info {
+		flex: 1;
+	}
+
+	.agent-name {
+		font-size: 28rpx;
+		color: #333333;
+		font-weight: 500;
+	}
+
+	.agent-phone {
+		font-size: 24rpx;
+		color: #999999;
+		margin-top: 4rpx;
+	}
+
+	.agent-status {
+		font-size: 22rpx;
+		padding: 4rpx 16rpx;
+		border-radius: 16rpx;
+	}
+
+	.status-normal {
+		background-color: #E8F5E9;
+		color: #4CAF50;
+	}
+
+	.status-disabled {
+		background-color: #FFF3E0;
+		color: #FF9800;
+	}
+
+	.agent-stats {
+		flex-direction: row;
+	}
+
+	.agent-stat-item {
+		flex: 1;
+	}
+
+	/* 空状态 */
+	.empty-state {
+		padding: 120rpx 0;
+		align-items: center;
+	}
+
+	.empty-text {
+		font-size: 28rpx;
+		color: #CCCCCC;
+	}
+
+	/* 切换平台弹窗 */
+	.popup-mask {
+		position: fixed;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		background-color: rgba(0, 0, 0, 0.5);
+		z-index: 999;
+		justify-content: flex-end;
+	}
+
+	.popup-content {
+		background-color: #FFFFFF;
+		border-radius: 24rpx 24rpx 0 0;
+		max-height: 70vh;
+	}
+
+	.popup-header {
+		flex-direction: row;
+		align-items: center;
+		justify-content: space-between;
+		padding: 28rpx 30rpx;
+		border-bottom: 1rpx solid #F0EDE6;
+	}
+
+	.popup-cancel {
+		font-size: 28rpx;
+		color: #F0C275;
+	}
+
+	.popup-title {
+		font-size: 32rpx;
+		color: #333333;
+		font-weight: 600;
+	}
+
+	.popup-close {
+		font-size: 32rpx;
+		color: #999999;
+	}
+
+	.popup-list {
+		max-height: 60vh;
+	}
+
+	.popup-item {
+		flex-direction: row;
+		align-items: center;
+		padding: 26rpx 30rpx;
+		border-bottom: 1rpx solid #F5F0E8;
+	}
+
+	.popup-item-logo {
+		width: 64rpx;
+		height: 64rpx;
+		border-radius: 12rpx;
+		margin-right: 20rpx;
+	}
+
+	.popup-item-name {
+		font-size: 30rpx;
+		color: #333333;
+	}
+</style>

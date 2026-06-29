@@ -1,0 +1,503 @@
+<template>
+	<view class="container">
+		<!-- 导航栏 -->
+		<view class="nav-bar">
+			<view class="back-btn" @click="goBack">
+				<image class="menu-arrow-icon" src="/static/svg/jt.png" mode="aspectFit" style="transform: rotate(180deg);" />
+			</view>
+			<text class="nav-title">提现账户管理</text>
+			<view class="nav-placeholder"></view>
+		</view>
+
+		<!-- 账户列表 -->
+		<view class="account-list">
+			<!-- 支付宝账户 -->
+			<view class="account-card">
+				<view class="card-header">
+					<view class="card-left">
+						<image class="account-icon" src="/static/svg/alipay.svg" mode="aspectFit" />
+						<text class="account-type">支付宝</text>
+					</view>
+					<view class="card-right" @click="editAlipay">
+						<image class="edit-icon" src="/static/svg/edit.svg" mode="aspectFit" />
+						<text class="edit-text">编辑</text>
+					</view>
+				</view>
+				<view class="card-body">
+					<view class="field-item">
+						<text class="field-label">支付宝账号：</text>
+						<text class="field-value">{{ alipayAccount }}</text>
+					</view>
+					<view class="field-item">
+						<text class="field-label">支付宝姓名：</text>
+						<text class="field-value">{{ alipayName }}</text>
+					</view>
+				</view>
+			</view>
+
+			<!-- 银行卡账户 -->
+			<view class="account-card">
+				<view class="card-header">
+					<view class="card-left">
+						<image class="account-icon bank-icon" src="/static/svg/bank.svg" mode="aspectFit" />
+						<text class="account-type">灵工</text>
+					</view>
+					<view class="card-right" @click="editBank">
+						<image class="edit-icon" src="/static/svg/edit.svg" mode="aspectFit" />
+						<text class="edit-text">编辑</text>
+					</view>
+				</view>
+				<view class="card-body">
+					<view class="field-row">
+						<view class="field-item">
+							<text class="field-label">收款人姓名：</text>
+							<text class="field-value">{{ bankName }}</text>
+						</view>
+						<view class="field-item">
+							<text class="field-label">身份证号：</text>
+							<text class="field-value">{{ bankIdCard }}</text>
+						</view>
+					</view>
+					<view class="field-row">
+						<view class="field-item">
+							<text class="field-label">银行卡号：</text>
+							<text class="field-value">{{ bankNo }}</text>
+						</view>
+						<view class="field-item">
+							<text class="field-label">手机号：</text>
+							<text class="field-value">{{ bankPhone }}</text>
+						</view>
+					</view>
+				</view>
+			</view>
+		</view>
+
+		<!-- 编辑弹窗 - 支付宝 -->
+		<view v-if="showAlipayEdit" class="popup-mask" @click="showAlipayEdit = false">
+			<view class="popup-content" @click.stop>
+				<view class="popup-header">
+					<text class="popup-cancel" @click="showAlipayEdit = false">取消</text>
+					<text class="popup-title">编辑支付宝</text>
+					<text class="popup-save" @click="saveAlipay">保存</text>
+				</view>
+				<view class="popup-body">
+					<view class="input-item">
+						<text class="input-label">支付宝账号</text>
+						<input class="input-field" type="text" placeholder="请输入支付宝账号" v-model="editAlipayAccount" />
+					</view>
+					<view class="input-item">
+						<text class="input-label">支付宝姓名</text>
+						<input class="input-field" type="text" placeholder="请输入真实姓名" v-model="editAlipayName" />
+					</view>
+				</view>
+			</view>
+		</view>
+
+		<!-- 编辑弹窗 - 银行卡 -->
+		<view v-if="showBankEdit" class="popup-mask" @click="showBankEdit = false">
+			<view class="popup-content" @click.stop>
+				<view class="popup-header">
+					<text class="popup-cancel" @click="showBankEdit = false">取消</text>
+					<text class="popup-title">编辑银行卡</text>
+					<text class="popup-save" @click="saveBank">保存</text>
+				</view>
+				<view class="popup-body">
+					<view class="input-item">
+						<text class="input-label">收款人姓名</text>
+						<input class="input-field" type="text" placeholder="请输入收款人姓名" v-model="editBankName" />
+					</view>
+					<view class="input-item">
+						<text class="input-label">身份证号</text>
+						<input class="input-field" type="text" placeholder="请输入身份证号" v-model="editBankIdCard" />
+					</view>
+					<view class="input-item">
+						<text class="input-label">银行卡号</text>
+						<input class="input-field" type="text" placeholder="请输入银行卡号" v-model="editBankNo" />
+					</view>
+					<view class="input-item">
+						<text class="input-label">手机号</text>
+						<input class="input-field" type="text" placeholder="请输入预留手机号" v-model="editBankPhone" />
+					</view>
+				</view>
+			</view>
+		</view>
+	</view>
+</template>
+
+<script setup lang="uts">
+	import { onShow } from "@dcloudio/uni-app";
+	import { checkLogin } from "@/utils/auth.uts";
+	import {
+		getWithdrawAccountsApi,
+		addWithdrawAccountApi,
+		updateWithdrawAccountApi,
+		type WithdrawAccountsResult,
+		type WithdrawAccountItem
+	} from "@/utils/api.uts"
+
+	// ========== 数据 ==========
+	const alipayId = ref<number>(0)
+	const alipayAccount = ref<string>('')
+	const alipayName = ref<string>('')
+
+	const lingongId = ref<number>(0)
+	const bankName = ref<string>('')
+	const bankIdCard = ref<string>('')
+	const bankNo = ref<string>('')
+	const bankPhone = ref<string>('')
+
+	// 弹窗状态
+	const showAlipayEdit = ref<boolean>(false)
+	const showBankEdit = ref<boolean>(false)
+
+	// 编辑临时数据
+	const editAlipayAccount = ref<string>('')
+	const editAlipayName = ref<string>('')
+	const editBankName = ref<string>('')
+	const editBankIdCard = ref<string>('')
+	const editBankNo = ref<string>('')
+	const editBankPhone = ref<string>('')
+
+	onShow(() => {
+		checkLogin()
+		loadAccounts()
+	})
+
+	// ========== 加载账户数据 ==========
+	const loadAccounts = () => {
+		getWithdrawAccountsApi({ account_type: 2 }).then((data : WithdrawAccountsResult) => {
+			if (data.list.length > 0) {
+				const user = data.list[0]
+				if (user.alipay != null) {
+					alipayId.value = (user.alipay as WithdrawAccountItem).id
+					alipayAccount.value = (user.alipay as WithdrawAccountItem).accountNo
+					alipayName.value = (user.alipay as WithdrawAccountItem).realName
+				}
+				if (user.lingong != null) {
+					lingongId.value = (user.lingong as WithdrawAccountItem).id
+					const ling = user.lingong as any
+					bankName.value = ling.realName || ''
+					bankIdCard.value = ling.idCard || ''
+					bankNo.value = ling.bankNo || ''
+					bankPhone.value = ling.bankPhone || ''
+				}
+			}
+		}).catch((_err : any) => {})
+	}
+
+	// ========== 导航 ==========
+	const goBack = () : void => {
+		const pages = getCurrentPages()
+		if (pages.length > 1) {
+			uni.navigateBack()
+		} else {
+			uni.reLaunch({ url: '/pages/mine/mine' })
+		}
+	}
+
+	// ========== 编辑支付宝 ==========
+	const editAlipay = () : void => {
+		editAlipayAccount.value = alipayAccount.value
+		editAlipayName.value = alipayName.value
+		showAlipayEdit.value = true
+	}
+
+	const saveAlipay = () : void => {
+		if (editAlipayAccount.value === '' || editAlipayName.value === '') {
+			uni.showToast({ title: '请填写完整信息', icon: 'none' })
+			return
+		}
+		const phoneReg = /^1[3-9]\d{9}$/
+		const emailReg = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
+		if (!phoneReg.test(editAlipayAccount.value) && !emailReg.test(editAlipayAccount.value)) {
+			uni.showToast({ title: '请输入正确的手机号或邮箱', icon: 'none' })
+			return
+		}
+
+		uni.showLoading({ title: '保存中...' })
+		if (alipayId.value > 0) {
+			// 更新
+			updateWithdrawAccountApi(alipayId.value, {
+				account_no: editAlipayAccount.value.trim(),
+				real_name: editAlipayName.value.trim()
+			}).then(() => {
+				alipayAccount.value = editAlipayAccount.value.trim()
+				alipayName.value = editAlipayName.value.trim()
+				showAlipayEdit.value = false
+				uni.showToast({ title: '修改成功', icon: 'success' })
+			}).catch(() => {}).finally(() => uni.hideLoading())
+		} else {
+			// 新增
+			addWithdrawAccountApi({
+				account_type: 2,
+				type: 1,
+				account_no: editAlipayAccount.value.trim(),
+				real_name: editAlipayName.value.trim()
+			}).then((res) => {
+				alipayId.value = res.id
+				alipayAccount.value = editAlipayAccount.value.trim()
+				alipayName.value = editAlipayName.value.trim()
+				showAlipayEdit.value = false
+				uni.showToast({ title: '添加成功', icon: 'success' })
+			}).catch(() => {}).finally(() => uni.hideLoading())
+		}
+	}
+
+	// ========== 编辑灵工（银行卡） ==========
+	const editBank = () : void => {
+		editBankName.value = bankName.value
+		editBankIdCard.value = bankIdCard.value
+		editBankNo.value = bankNo.value
+		editBankPhone.value = bankPhone.value
+		showBankEdit.value = true
+	}
+
+	const saveBank = () : void => {
+		if (editBankName.value === '' || editBankIdCard.value === '' || editBankNo.value === '' || editBankPhone.value === '') {
+			uni.showToast({ title: '请填写完整信息', icon: 'none' })
+			return
+		}
+		const nameReg = /^[\u4e00-\u9fa5a-zA-Z]{2,20}$/
+		if (!nameReg.test(editBankName.value)) {
+			uni.showToast({ title: '请输入正确的姓名', icon: 'none' })
+			return
+		}
+		const idCardReg = /^\d{17}[\dXx]$/
+		if (!idCardReg.test(editBankIdCard.value)) {
+			uni.showToast({ title: '请输入正确的身份证号', icon: 'none' })
+			return
+		}
+		const bankNoReg = /^\d{16,19}$/
+		if (!bankNoReg.test(editBankNo.value)) {
+			uni.showToast({ title: '请输入正确的银行卡号', icon: 'none' })
+			return
+		}
+		const phoneReg = /^1[3-9]\d{9}$/
+		if (!phoneReg.test(editBankPhone.value)) {
+			uni.showToast({ title: '请输入正确的手机号', icon: 'none' })
+			return
+		}
+
+		uni.showLoading({ title: '保存中...' })
+		if (lingongId.value > 0) {
+			// 更新
+			updateWithdrawAccountApi(lingongId.value, {
+				account_no: editBankNo.value.trim(),
+				real_name: editBankName.value.trim(),
+				id_card: editBankIdCard.value.trim(),
+				bank_phone: editBankPhone.value.trim()
+			}).then(() => {
+				bankName.value = editBankName.value.trim()
+				bankIdCard.value = editBankIdCard.value.trim()
+				bankNo.value = editBankNo.value.trim()
+				bankPhone.value = editBankPhone.value.trim()
+				showBankEdit.value = false
+				uni.showToast({ title: '修改成功', icon: 'success' })
+			}).catch(() => {}).finally(() => uni.hideLoading())
+		} else {
+			// 新增
+			addWithdrawAccountApi({
+				account_type: 2,
+				type: 2,
+				account_no: editBankNo.value.trim(),
+				real_name: editBankName.value.trim(),
+				id_card: editBankIdCard.value.trim(),
+				bank_phone: editBankPhone.value.trim()
+			}).then((res) => {
+				lingongId.value = res.id
+				bankName.value = editBankName.value.trim()
+				bankIdCard.value = editBankIdCard.value.trim()
+				bankNo.value = editBankNo.value.trim()
+				bankPhone.value = editBankPhone.value.trim()
+				showBankEdit.value = false
+				uni.showToast({ title: '添加成功', icon: 'success' })
+			}).catch(() => {}).finally(() => uni.hideLoading())
+		}
+	}
+</script>
+
+<style>
+	.container {
+		background-color: #F5F0E8;
+		min-height: 100vh;
+	}
+
+	.menu-arrow-icon {
+		width: 28rpx;
+		height: 28rpx;
+	}
+
+	/* 导航栏 */
+	.nav-bar {
+		flex-direction: row;
+		align-items: center;
+		justify-content: space-between;
+		padding: 56rpx 24rpx 16rpx 24rpx;
+		background-color: #FFFFFF;
+	}
+
+	.back-btn {
+		width: 70rpx;
+		height: 70rpx;
+		justify-content: center;
+		align-items: center;
+	}
+
+	.nav-title {
+		font-size: 34rpx;
+		color: #333333;
+		font-weight: 600;
+	}
+
+	.nav-placeholder {
+		width: 70rpx;
+	}
+
+	/* 账户列表 */
+	.account-list {
+		padding: 24rpx;
+	}
+
+	.account-card {
+		background-color: #FFFFFF;
+		border-radius: 16rpx;
+		margin-bottom: 24rpx;
+		overflow: hidden;
+	}
+
+	.card-header {
+		flex-direction: row;
+		align-items: center;
+		justify-content: space-between;
+		padding: 24rpx 24rpx 16rpx 24rpx;
+	}
+
+	.card-left {
+		flex-direction: row;
+		align-items: center;
+	}
+
+	.account-icon {
+		width: 44rpx;
+		height: 44rpx;
+		margin-right: 14rpx;
+	}
+
+	.bank-icon {
+		width: 40rpx;
+		height: 40rpx;
+	}
+
+	.account-type {
+		font-size: 30rpx;
+		color: #333333;
+		font-weight: 600;
+	}
+
+	.card-right {
+		flex-direction: row;
+		align-items: center;
+	}
+
+	.edit-icon {
+		width: 28rpx;
+		height: 28rpx;
+		margin-right: 6rpx;
+	}
+
+	.edit-text {
+		font-size: 26rpx;
+		color: #F0C275;
+		font-weight: 500;
+	}
+
+	.card-body {
+		padding: 0 24rpx 24rpx 24rpx;
+	}
+
+	.field-row {
+		flex-direction: row;
+		flex-wrap: wrap;
+	}
+
+	.field-item {
+		width: 50%;
+		padding: 10rpx 0;
+	}
+
+	.field-label {
+		font-size: 24rpx;
+		color: #999999;
+	}
+
+	.field-value {
+		font-size: 26rpx;
+		color: #333333;
+		margin-top: 4rpx;
+	}
+
+	/* 弹窗 */
+	.popup-mask {
+		position: fixed;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		background-color: rgba(0, 0, 0, 0.5);
+		z-index: 999;
+		justify-content: flex-end;
+	}
+
+	.popup-content {
+		background-color: #FFFFFF;
+		border-radius: 24rpx 24rpx 0 0;
+		max-height: 80vh;
+	}
+
+	.popup-header {
+		flex-direction: row;
+		align-items: center;
+		justify-content: space-between;
+		padding: 28rpx 30rpx;
+		border-bottom: 1rpx solid #F0EDE6;
+	}
+
+	.popup-cancel {
+		font-size: 28rpx;
+		color: #999999;
+	}
+
+	.popup-title {
+		font-size: 32rpx;
+		color: #333333;
+		font-weight: 600;
+	}
+
+	.popup-save {
+		font-size: 28rpx;
+		color: #F0C275;
+		font-weight: 600;
+	}
+
+	.popup-body {
+		padding: 30rpx;
+	}
+
+	.input-item {
+		margin-bottom: 24rpx;
+	}
+
+	.input-label {
+		font-size: 26rpx;
+		color: #666666;
+		margin-bottom: 12rpx;
+	}
+
+	.input-field {
+		background-color: #F5F0E8;
+		border-radius: 12rpx;
+		padding: 20rpx 24rpx;
+		font-size: 28rpx;
+		color: #333333;
+	}
+</style>

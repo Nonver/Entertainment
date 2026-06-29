@@ -1,0 +1,342 @@
+<template>
+	<view class="container">
+		<!-- 顶部导航栏 -->
+		<view class="nav-bar">
+			<view class="back-btn" @click="goBack">
+				<text class="back-icon">‹</text>
+			</view>
+			<text class="nav-title">{{pageTitle}}</text>
+			<view class="nav-placeholder"></view>
+		</view>
+
+		<!-- 内容区域 -->
+		<scroll-view class="content" scroll-y>
+			<!-- 新闻详情模式：显示从 API 传入的内容 -->
+			<view v-if="isNewsDetail" class="news-detail">
+				<text class="news-detail-title">{{pageTitle}}</text>
+				<view class="news-detail-meta">
+					<text class="news-detail-time">{{detailData.publish_time}}</text>
+					<text v-if="detailData.author" class="news-detail-author">{{detailData.author}}</text>
+				</view>
+				<text class="news-detail-content">{{detailData.content}}</text>
+			</view>
+
+			<!-- 默认：用户注册协议静态内容 -->
+			<view v-else>
+				<view class="section">
+					<text class="paragraph">欢迎您（下称"用户"或"您"）与上宸互娱经营者（详见定义条款）共同签署本《用户注册协议》（下称"本协议"）并使用上宸互娱台服务。为维护您自身权益，建议您仔细阅读各条款具体表述。</text>
+					<text class="paragraph">您在申请注册流程中点击同意本协议之前，应当认真阅读本协议。请您务必审慎阅读、充分理解各条款内容，特别是免除或限制责任的条款、法律适用和争议解决条款。若您对协议有任何疑问，可向上宸互娱台客服咨询。</text>
+					<text class="paragraph">当您按照注册页面提示填写信息、阅读并同意本协议且完成全部注册程序后，即表示您已充分阅读、理解并接受本协议的全部内容，并与上宸互娱台达成一致，成为上宸互娱台"用户"。阅读本协议的过程中，如果您不同意本协议或其中任何条款约定，您应立即停止注册程序。如果您未申请注册流程，或者在本协议生效前已成为上宸互娱台的注册用户，则您通过访问和/或使用上宸互娱台，即视为您表示同意接受本协议的全部内容，否则请您不要访问或使用上宸互娱台。</text>
+				</view>
+
+				<view class="section">
+					<text class="section-title">一、定义</text>
+					<text class="paragraph"><text class="bold">上宸互娱台：</text>指上宸互娱网站。</text>
+					<text class="paragraph"><text class="bold">上宸互娱台服务：</text>上宸互娱基于互联网，以包含上宸互娱台网站等在内的各种形态（包括未来技术发展出现的新的服务形态）向您提供的各项服务。</text>
+					<text class="paragraph"><text class="bold">上宸互娱台服务提供者：</text>指上宸互娱及其关联方。</text>
+					<text class="paragraph"><text class="bold">用户：</text>下称"您"或"用户"，是指注册、登录、使用、浏览、获取本政策项下服务的个人。</text>
+					<text class="paragraph"><text class="bold">个人信息：</text>指以电子或者其他方式记录的能够单独或者与其他信息结合识别特定自然人身份或者反映特定自然人活动情况的各种信息，包括自然人姓名、出生日期、身份证号码、个人生物识别信息、住址、电话号码等。</text>
+				</view>
+
+				<view class="section">
+					<text class="section-title">二、协议范围</text>
+					<text class="sub-title">（一）签约主体</text>
+					<text class="paragraph">本协议是您与上宸互娱台之间关于注册、登录上宸互娱台以及使用上宸互娱台服务所订立的协议。本协议对您与上宸互娱台经营者均具有合同效力。上宸互娱台经营者是指经营上宸互娱台的各法律主体，本协议项下，上宸互娱台经营者可能根据上宸互娱台的业务调整而发生变更，变更后的上宸互娱台经营者与您共同履行本协议并向您提供服务，上宸互娱经营者的变更不会影响您本协议项下的权益。上宸互娱台经营者还有可能因为提供新的上宸互娱台服务而新增，如您使用新增的上宸互娱台服务的，视为您同意新增的上宸互娱台经营者与您共同履行本协议。发生争议时，您可根据您具体使用的服务及对您权益产生影响的具体行为对象确定与您履约的主体及争议相对方。</text>
+					<text class="sub-title">（二）补充协议</text>
+					<text class="paragraph">由于互联网高速发展，您与上宸互娱签署的本协议列明的条款并不能完整罗列并覆盖您与上宸互娱所有权利与义务，现有的约定也不能保证完全符合未来发展的需求。因此，上宸互娱台公示的相关声明及政策、上宸互娱台规则和协议均为本协议的补充协议，与本协议不可分割且具有同等法律效力。如您使用上宸互娱台服务，视为您同意上述补充协议。</text>
+				</view>
+
+				<view class="section">
+					<text class="section-title">三、账户注册与使用</text>
+					<text class="sub-title">（一）用户资格</text>
+					<text class="paragraph">您确认，在您开始使用/注册程序使用上宸互娱台服务前，您应当具备中华人民共和国法律规定的与您行为相适应的民事行为能力。若您不具备前述与您行为相适应的民事行为能力，则您及您的监护人应依照法律规定承担因此而导致的一切后果。</text>
+					<text class="sub-title">（二）账户说明</text>
+					<text class="paragraph">当您按照注册页面提示填写信息、阅读并同意本协议且完成全部注册程序后，您可获得上宸互娱台账户并成为上宸互娱台用户。您有权使用您设置或确认的上宸互娱用户名（以下简称"账户名称"）及您设置的密码（账户名称及密码合称"账户"）登录上宸互娱台。由于您的上宸互娱账户关联您的个人信息及上宸互娱台商业信息，您的上宸互娱账户仅限您本人使用。未经上宸互娱台同意，您直接或间接授权第三方使用您上宸互娱账户或获取您账户项下信息的行为所导致的一切责任后果由您自行承担，上宸互娱台对此不承担任何责任。</text>
+					<text class="paragraph">作为上宸互娱台经营者，为使您更好地使用上宸互娱台的各项服务，保障您的账户安全，上宸互娱可要求您按上宸互娱台要求及我国法律规定完成实名认证。如您的账户长期未登录，上宸互娱有权予以进行注销、回收、替换或采取删除该用您账户在上宸互娱台数据库中的任何记录等清理措施，您的账户将不能再登录任一上宸互娱台，相应服务同时终止。</text>
+					<text class="paragraph">注册信息管理在使用上宸互娱台服务时，您应当按上宸互娱台页面的提示准确完整地提供您的信息（包括您的姓名及电子邮件地址、联系电话、联系地址等），以便上宸互娱在必要时与您联系。您了解并同意，您有义务保持您提供信息的真实性及有效性，不得以虚假、冒用的居民身份信息、企业注册信息、组织机构代码等注册信息进行注册或认证，任何非法、不真实、不准确的用户信息所产生的责任由您自行承担。您所设置的账户名不得违反国家法律法规及上宸互娱台规则关于账户名的管理规定，否则上宸互娱可对您的账户名进行暂停使用或注销等处理，并向主管机关报告。</text>
+					<text class="paragraph">您理解并承诺，您的账户名称、头像和简介等注册信息中不得出现违法和不良信息，没有冒用、关联机构或社会名人，您在账户注册过程中需遵守法律法规、社会主义制度、国家利益、公民合法权益、公共秩序、社会道德风尚和信息真实性等底线。</text>
+					<text class="sub-title">（三）更新维护</text>
+					<text class="paragraph">您应当及时更新您提供的信息（包括但不限于注册资料等），确保符合及时、详尽、真实、准确的要求。在法律有明确规定要求上宸互娱对部分用户的信息进行核实的情况下，上宸互娱将依法不时地对您的信息进行检查核实，您应当配合提供最新、真实、完整的信息。您在更改、删除有关信息的同时也可能会造成储存在系统中的文字、图片、视频等丢失，上宸互娱对您自主操作导致内容丢失不承担责任。如上宸互娱按您最后一次提供的信息与您联系未果、您未按上宸互娱的要求及时提供信息、您提供的信息存在明显不实或行政司法机关核实您提供的信息无效的，您将承担因此对您自身、他人及上宸互娱造成的全部损失与不利后果。上宸互娱可向您发出询问或要求整改的通知，并要求您进行重新认证，直至中止、终止对您提供部分或全部上宸互娱台服务，上宸互娱对此不承担责任。</text>
+					<text class="sub-title">（四）账户安全规范</text>
+					<text class="paragraph">您的账户为您自行设置并由您保管，上宸互娱任何时候均不会主动要求您提供您的账户密码。因此，建议您务必保管好您的账户，并确保您在每个上网时段结束时退出登录并以正确步骤离开上宸互娱台。</text>
+					<text class="paragraph">如您主动通知上宸互娱台，要求上宸互娱台采取措施暂停您帐号的登录和使用的，上宸互娱台应当要求您提供并核实与其注册身份信息相一致的个人有效身份信息，否则上宸互娱有权拒绝您的上述请求。上宸互娱台核实您所提供的个人有效身份信息与所注册的身份信息相一致的，应当及时采取措施暂停用户帐号的登录和使用。用户没有提供其个人有效身份证件或者用户提供的个人有效身份证件与所注册的身份信息不一致的，上宸互娱台有权拒绝用户上述请求。</text>
+					<text class="paragraph">账户因您主动泄露或因您遭受他人攻击、诈骗等行为导致的损失及后果，均由您自行承担。上宸互娱并不承担责任，您应通过司法、行政等救济途径向侵权行为人追偿。</text>
+					<text class="paragraph">您的账户只限您本人使用，不得出借、赠与、出租、未按规定程序转让、售卖或分享他人使用。当您的账户遭到未经授权的使用时，您应当立即通知上宸互娱台，否则未经授权的使用行为均视为您本人的行为，您将自行承担所有由此导致的损失及后果。</text>
+					<text class="paragraph">如发现任何未经授权使用您账户登录上宸互娱台或其他可能导致您账户遭窃、遗失的情况，建议您立即通知上宸互娱。您理解上宸互娱对您的任何请求采取行动均需要合理时间，且上宸互娱应您请求而采取的行动可能无法避免或阻止侵害后果的形成或扩大，除上宸互娱存在法定过错外，上宸互娱不承担责任。</text>
+				</view>
+
+				<view class="section">
+					<text class="section-title">四、用户权益</text>
+					<text class="paragraph">上宸互娱台向您提供包括但不限于以下服务：上宸互娱直接所有或运营的任何网站（及其他由上宸互娱运营的任何网站），上宸互娱台提供兼职平台不收取任何注册费用，未满18周岁人员，禁止注册！</text>
+					<text class="sub-title">（一）男性注册用户（兼职人员）</text>
+					<text class="paragraph">可以在平台发布海报，推广服务，用生成的海报去分享邀请人注册指定手机应用APP事宜。（推广员邀请用户注册时应当对被邀请人在平台的交友行为进行合规宣传，引导用户与平台共同营造合法合规的绿色交友环境）</text>
+					<text class="paragraph">1、文明交友宣传：平台坚决抵制不文明的交友行为，希望各位严格遵守社会主义价值观道德观，共同维护平台良好的交友氛围。</text>
+					<text class="paragraph">2、遵守平台规范守则宣传：平台是绿色健康的交友平台，坚决抵制不文明、道德的交友行为，请勿在平台中进行欺诈、涉黄、低俗等违规行为，平台规范请仔细阅读。</text>
+					<text class="paragraph">3、反欺诈、反色情、反低俗宣传：平台坚决抵制一切涉嫌欺诈欺骗（例如捏造个人真实情况，以利益/色情诱惑/婚恋关系开展等，作为诱饵发起的欺诈欺骗类行为）、涉黄、色情、低俗等违规行为，一经发现，平台会严肃处理！</text>
+					<text class="sub-title">（二）女性注册用户</text>
+					<text class="paragraph">可以通过注册平台用户后，注册指定手机应用APP事宜，在注册APP后应当遵守该APP"注册协议"和法律、法规、行政规章，一切行为与上宸互娱台无关，上宸互娱台不对其行为承担任何责任。</text>
+					<text class="paragraph">不得使用诈骗，欺诈手段，以及违反该APP通告，公告，来诱导，引导，该APP玩家进行打赏，《明知此行为违反该APP通告，公告，触碰法律，是违法，犯法行为，仍然不顾后果，达到自己目的》，一切行为属于个人行为，自己需承担一切后果，与上宸互娱台无关，上宸互娱台不对其行为承担任何责任。</text>
+					<text class="sub-title">（三）上宸互娱台的义务</text>
+					<text class="paragraph">1. 上宸互娱有义务给用户（兼职人员）提供指定手机应用APP事宜</text>
+					<text class="paragraph">2. 上宸互娱台根据用户（兼职人员）推广注册、直播收益相关数据支付提成，具体提成由平台与用户另行具体约定，平台有权按需要修改或变更所提供的收费服务、收费标准、收费方式、服务费、及服务条款。</text>
+					<text class="paragraph">如果您通过上宸互娱台注册指定手机应用APP或未来可能指定的软件，在其他软件上支付或充值后可能产生的任何商业风险（包括但不限于不法分子利用您账户或银行卡等有价卡等进行违法活动），该等风险均有可能给您造成相应的经济损失，上宸互娱台不对您的前述风险和损失承担任何责任。</text>
+					<text class="sub-title">（四）服务规范</text>
+					<text class="paragraph">上宸互娱台账户的所有权归上宸互娱所有，您完成申请注册手续后，获得上宸互娱台账户的使用权，该使用权仅属于初始申请注册人。您有义务妥善保管在注册并使用上宸互娱台时获得的账户及密码。</text>
+					<text class="paragraph">您需独立对自己在上宸互娱上实施的行为承担法律责任。您理解并承诺，您使用上宸互娱上传、发布或传输的内容（包括但不限于文字、图片、音乐、视频、音频、声音、对话等各种形式的内容）均由您原创或已获合法授权。如您使用第三方享有知识产权的内容您应确保上宸互娱对前述内容的展示、公布及推广不会侵犯他人知识产权或其他合法权益，也无需向任何第三方支付任何费用，否则因此造成上宸互娱及其关联方、授权方损失的，您应承担责任予以赔偿。</text>
+					<text class="paragraph">如上宸互娱发现、或通过第三方举报或投诉获知，您发布的内容存在或涉嫌违反有关法律法规、上宸互娱台规则、和/或侵害第三方合法权益的，上宸互娱有权依据合理判断不经通知立即采取一切必要措施账号被封号处理期间，您在上宸互娱台的账户内的财产将被冻结。您在上宸互娱台中与他人进行的商业行为引发的法律纠纷，由交易双方自行处理，上宸互娱不承担任何责任。</text>
+					<text class="sub-title">（五）相关的风险</text>
+					<text class="paragraph">使用上宸互娱台服务过程中，您需遵守以下法律法规：《中华人民共和国保守国家秘密法》、《中华人民共和国著作权法》、《中华人民共和国计算机信息系统安全保护条例》、《计算机软件保护条例》、《信息网络传播权保护条例》、《互联网直播服务管理规定》等有关计算机及互联网规定的法律、法规。在任何情况下，上宸互娱一旦合理地认为您的行为可能违反上述法律、法规，可以在任何时候，不经事先通知终止向您提供服务。</text>
+					<text class="sub-title">（六）禁止的内容</text>
+					<text class="paragraph">您理解并保证您在上宸互娱台发布或传输的内容不含有以下内容：</text>
+					<text class="paragraph">（1）反对宪法确定的基本原则的；</text>
+					<text class="paragraph">（2）危害国家统一、主权和领土完整，颠覆国家政权的；</text>
+					<text class="paragraph">（3）泄露国家秘密、危害国家安全或者损害国家荣誉和利益的；</text>
+					<text class="paragraph">（4）煽动民族仇恨、民族歧视，破坏民族团结，或者侵害民族风俗、习惯的；</text>
+					<text class="paragraph">（5）破坏国家宗教政策，宣扬邪教、迷信的；</text>
+					<text class="paragraph">（6）扰乱社会秩序，破坏社会稳定的；</text>
+					<text class="paragraph">（7）诱导未成年人违法犯罪和渲染及传播淫秽、色情、赌博、暴力、凶杀、恐怖活动或者教唆犯罪的；</text>
+					<text class="paragraph">（8）侮辱或者诽谤他人，侵害公民个人隐私等他人合法权益的；</text>
+					<text class="paragraph">（9）散布谣言，危害社会公德，损害民族优秀文化传统的；</text>
+					<text class="paragraph">（10）有关法律、行政法规和国家规定禁止的其他内容；</text>
+					<text class="paragraph">如果您上传、发布或传输的内容含有以上违反法律法规的信息或内容的，或者侵犯任何第三方的合法权益，您将直接承担以上导致的一切不利后果。如因此给上宸互娱造成不利后果的，您应负责消除影响，并且赔偿上宸互娱因此导致的一切损失，包括且不限于财产损害赔偿、名誉损害赔偿、律师费、交通费等因维权而产生的合理费用。</text>
+				</view>
+
+				<view class="section">
+					<text class="section-title">五、用户的违约及处理</text>
+					<text class="sub-title">（一）违约认定</text>
+					<text class="paragraph">发生如下情形之一的，视为您违约：</text>
+					<text class="paragraph">（1）使用上宸互娱台服务时违反有关法律法规规定的</text>
+					<text class="paragraph">（2）违反本协议或本协议补充协议约定的。</text>
+					<text class="paragraph">为适应互联网行业发展和满足海量用户对高效优质服务的需求，您理解并同意，上宸互娱可在上宸互娱台规则中约定违约认定的程序和标准。</text>
+					<text class="sub-title">（二）违约处理措施</text>
+					<text class="paragraph">您在上宸互娱台上发布的内容和信息构成违约的，上宸互娱可根据相应规则立即对相应内容和信息进行删除、屏蔽等处理或对您的账户进行暂停使用、查封、冻结注销等处理。您在上宸互娱台上实施的行为，或虽未在上宸互娱台上实施但对上宸互娱台及其用户产生影响的行为构成违约的，上宸互娱可依据相应规则对您的账户执行限制参加活动、中止向您提供部分或全部服务处理措施。如您的行为构成根本违约的，上宸互娱可查封您的账户，终止向您提供服务。如果您在上宸互娱台上的行为违反相关的法律法规，上宸互娱可依法向相关主管机关报告并提交您的使用记录和其他信息。同时，上宸互娱可将对您上述违约行为处理措施信息以及其他经国家行政或司法机关生效法律文书确认的违法信息在上宸互娱台上予以公示。</text>
+					<text class="sub-title">（三）赔偿责任</text>
+					<text class="paragraph">如您的行为使上宸互娱及/或其关联公司遭受损失（包括但不限于自身的直接经济损失、商誉损失及对外支付的赔偿金、和解款、律师费、诉讼费等间接经济损失），您应赔偿上宸互娱台及/或其关联公司的上述全部损失。如您的行为使上宸互娱及/或其关联公司遭受第三人主张权利，上宸互娱及/或其关联公司可在对第三人承担金钱给付等义务后就全部损失向您追偿。</text>
+					<text class="sub-title">（四）特别约定</text>
+					<text class="paragraph">如您向上宸互娱及/或其关联公司的雇员或顾问等提供实物、现金、现金等价物、劳务、旅游等价值明显超出正常商务洽谈范畴的利益，则可视为您存在商业贿赂行为。发生上述情形的，上宸互娱可立即终止与您的所有合作并向您收取违约金及/或赔偿金，该等金额上宸互娱因您的贿赂行为而遭受的经济损失和商誉损失作为计算依据。</text>
+					<text class="paragraph">上宸互娱依法律规定承担相应义务，但无法对由于信息网络设备维护、连接故障，电脑、通讯或其他系统的故障，黑客活动、计算机病毒、电力故障，罢工，暴乱，火灾，洪水，风暴，爆炸，战争，政府行为，司法行政机关的命令或因第三方原因而给您造成的损害结果承担责任。</text>
+					<text class="paragraph">上宸互娱通过中华人民共和国境内的设施控制和提供上宸互娱台服务，上宸互娱不担保控制或提供的服务在其他国家或地区是适当的、可行的，任何在其他司法辖区使用上宸互娱台服务的用户应自行确保其遵守当地的法律法规，上宸互娱对此不承担任何责任。</text>
+				</view>
+
+				<view class="section">
+					<text class="section-title">六、协议的变更</text>
+					<text class="paragraph">上宸互娱可根据国家法律法规变化及上宸互娱台服务变化的需要，不时修改本协议、补充协议，变更后的协议、补充协议（下称"变更事项"）将通过本协议约定的方式通知您。更新后的协议条款一旦公布即代替原来的协议条款。</text>
+					<text class="paragraph">如您对变更事项不同意的，您应当于变更事项确定的生效之日起停止使用上宸互娱台服务；如您在变更事项生效后仍继续使用上宸互娱台服务，则视为您同意已生效的变更事项。</text>
+				</view>
+
+				<view class="section">
+					<text class="section-title">七、通知</text>
+					<text class="paragraph">您同意上宸互娱以下合理的方式向您送达各类通知：</text>
+					<text class="paragraph">（1）公示的文案；</text>
+					<text class="paragraph">（2）平台消息；</text>
+					<text class="paragraph">（3）根据您预留于上宸互娱台的联系方式发出的电子邮件、手机短信、函件等；</text>
+					<text class="paragraph">上宸互娱通过上述方式向您发出通知，在发送成功后即视为送达；以纸质载体发出的书面通知，按照提供联系地址交邮后的第五个自然日即视为送达。对于在上宸互娱台上因交易活动引起的任何纠纷，您同意司法机关（包括但不限于人民法院）可以通过手机短信、电子邮件等现代通讯方式或邮寄方式向您送达法律文书（包括但不限于诉讼文书）。您指定接收法律文书的手机号码、电子邮箱等联系方式为您在上宸互娱台注册、更新时提供的手机号码、电子邮箱联系方式，司法机关向上述联系方式发出法律文书即视为送达。您指定的邮寄地址为您的法定联系地址或您提供的有效联系地址。</text>
+					<text class="paragraph">您同意司法机关可采取以上一种或多种送达方式向您送达法律文书，司法机关采取多种方式向您送达法律文书，送达时间以上述送达方式中最先送达的为准。</text>
+					<text class="paragraph">您同意上述送达方式适用于各个司法程序阶段。如进入诉讼程序的，包括但不限于一审、二审、再审、执行以及督促程序等。你应当保证所提供的联系方式是准确、有效的，并进行实时更新。如果因提供的联系方式不确切，或不及时告知变更后的联系方式，使法律文书无法送达或未及时送达，由您自行承担由此可能产生的法律后果。</text>
+				</view>
+
+				<view class="section">
+					<text class="section-title">八、协议的终止</text>
+					<text class="sub-title">（一）终止的情形</text>
+					<text class="paragraph">您有权通过以下任意一方式终止本协议：</text>
+					<text class="paragraph">（1）在满足上宸互娱台网站公示的账户注销等清理条件时您通过网站注销您的账户的；</text>
+					<text class="paragraph">（2）变更事项生效前您停止使用并明示不愿接受变更事项的；</text>
+					<text class="paragraph">（3）您明示不愿继续使用上宸互娱台服务，且符合上宸互娱台终止条件的。</text>
+					<text class="paragraph">出现以下情况时，上宸互娱可以本协议所列的方式通知您中止或终止本协议：</text>
+					<text class="paragraph">（1）您违反本协议约定，上宸互娱依据违约条款终止本协议；</text>
+					<text class="paragraph">（2）您转让本人账户、盗用他人账户、提供虚假注册身份信息、发布违禁内容和信息、骗取他人财物、采取不正当手段谋利等行为，上宸互娱依据上宸互娱台规则对您的账户予以查封的；</text>
+					<text class="paragraph">（3）除上述情形外，因您多次违反上宸互娱台规则相关规定且情节严重，上宸互娱依据上宸互娱台规则对您的账户予以查封的；</text>
+					<text class="paragraph">（4）您的账户被上宸互娱依据本协议进行注销等清理的；</text>
+					<text class="paragraph">（5）您在上宸互娱台有侵犯他人合法权益或其他严重违法违约行为的；</text>
+					<text class="paragraph">（6）上宸互娱台与合作推广APP方之间的合作协议关系终结；</text>
+					<text class="paragraph">（7）其它根据相关法律法规上宸互娱应当终止服务的情况。</text>
+					<text class="sub-title">（二）协议终止后的处理</text>
+					<text class="paragraph">本协议终止后，除法律有明确规定外，上宸互娱无义务向您或您指定的第三方披露您账户中的任何信息。本协议终止后，上宸互娱享有下列权利：</text>
+					<text class="paragraph">（1）停止收集和使用您的个人信息，但可继续保存您留存于上宸互娱台的其他内容和信息；</text>
+					<text class="paragraph">（2）对于您过往的违约行为，上宸互娱仍可依据本协议向您追究违约责任。</text>
+				</view>
+
+				<view class="section">
+					<text class="section-title">九、平台与用户的关系</text>
+					<text class="paragraph">平台与您不构成劳动关系、劳务派遣关系或类似关系，您方应自行承担人工成本，自担风险。履行本合同过程中，您方如有任何人身或财产损失，应由您方自行承担责任。</text>
+				</view>
+
+				<view class="section">
+					<text class="section-title">十、用户保密责任</text>
+					<text class="paragraph">用户履行本合同过程中（包括签订本合同前）所获得的上宸互娱台任何经营或技术信息均属上宸互娱台商业秘密，用户应予保密。一旦您方泄密，应向上宸互娱台赔偿责任。</text>
+				</view>
+
+				<view class="section last-section">
+					<text class="section-title">十一、法律适用、管辖</text>
+					<text class="paragraph">本协议之订立、生效、解释、修订、补充、终止、执行与争议解决均适用中华人民共和国大陆地区法律；如法律无相关规定的，参照商业惯例及/或行业惯例。</text>
+					<text class="paragraph">您因使用上宸互娱台服务所产生及与上宸互娱台服务有关的争议，由上宸互娱与您协商解决。协商不成时，任何一方均可向上宸互娱台的运营方所在地的人民法院提起诉讼。本协议任一条款被视为废止、无效或不可执行，该条应视为可分的且并不影响本协议其余条款的有效性及可执行性。</text>
+				</view>
+			</view>
+		</scroll-view>
+	</view>
+</template>
+
+<script setup lang="uts">
+	import { ref } from "vue";
+
+	// 页面标题
+	const pageTitle = ref<string>('用户注册协议')
+
+	// 是否为新闻详情模式（从 news 列表点击进入）
+	const isNewsDetail = ref<boolean>(false)
+
+	// 详情数据
+	const detailData = ref<any>({
+		title: '',
+		content: '',
+		publish_time: '',
+		author: ''
+	})
+
+	// 通过 onLoad 接收页面参数
+	onLoad((options : any) => {
+		console.log('[agreement] onLoad options:', JSON.stringify(options))
+		const dataStr = options?.data as string | null
+		if (dataStr != null && dataStr !== '') {
+			try {
+				const data = JSON.parse(decodeURIComponent(dataStr))
+				console.log('[agreement] parsed data:', JSON.stringify(data))
+				pageTitle.value = data.title || '详情'
+				detailData.value = data
+				isNewsDetail.value = true
+			} catch (e) {
+				console.error('解析新闻数据失败:', e)
+			}
+		}
+	})
+
+	// 返回上一页
+	const goBack = () : void => {
+		const pages = getCurrentPages()
+		if (pages.length > 1) {
+			uni.navigateBack()
+		} else {
+			uni.switchTab({
+				url: '/pages/news/news'
+			})
+		}
+	}
+</script>
+
+<style>
+	.container {
+		flex: 1;
+		background-color: #FFFFFF;
+	}
+
+	/* 顶部导航栏 */
+	.nav-bar {
+		flex-direction: row;
+		align-items: center;
+		justify-content: space-between;
+		padding: 60rpx 20rpx 20rpx 20rpx;
+		background-color: #FFFFFF;
+		border-bottom: 1rpx solid #EEEEEE;
+	}
+
+	.back-btn {
+		width: 60rpx;
+		height: 60rpx;
+		justify-content: center;
+		align-items: center;
+	}
+
+	.back-icon {
+		font-size: 48rpx;
+		color: #333333;
+	}
+
+	.nav-title {
+		font-size: 34rpx;
+		color: #333333;
+		font-weight: 500;
+	}
+
+	.nav-placeholder {
+		width: 60rpx;
+	}
+
+	/* 内容区域 */
+	.content {
+		flex: 1;
+		padding: 30rpx;
+	}
+
+	.section {
+		margin-bottom: 40rpx;
+	}
+
+	.last-section {
+		margin-bottom: 60rpx;
+	}
+
+	.section-title {
+		font-size: 32rpx;
+		color: #333333;
+		font-weight: bold;
+		margin-bottom: 20rpx;
+	}
+
+	.sub-title {
+		font-size: 28rpx;
+		color: #333333;
+		font-weight: 500;
+		margin-top: 20rpx;
+		margin-bottom: 12rpx;
+	}
+
+	.paragraph {
+		font-size: 26rpx;
+		color: #666666;
+		line-height: 1.8;
+		margin-bottom: 16rpx;
+	}
+
+	.bold {
+		font-weight: bold;
+		color: #333333;
+	}
+
+	/* 新闻详情模式 */
+	.news-detail {
+		padding: 0 0 60rpx 0;
+	}
+
+	.news-detail-title {
+		font-size: 36rpx;
+		color: #333333;
+		font-weight: bold;
+		line-height: 1.5;
+		margin-bottom: 24rpx;
+	}
+
+	.news-detail-meta {
+		flex-direction: row;
+		align-items: center;
+		margin-bottom: 30rpx;
+		padding-bottom: 24rpx;
+		border-bottom: 1rpx solid #EEEEEE;
+	}
+
+	.news-detail-time {
+		font-size: 24rpx;
+		color: #999999;
+		margin-right: 30rpx;
+	}
+
+	.news-detail-author {
+		font-size: 24rpx;
+		color: #999999;
+	}
+
+	.news-detail-content {
+		font-size: 28rpx;
+		color: #444444;
+		line-height: 1.8;
+	}
+</style>

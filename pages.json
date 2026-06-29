@@ -1,0 +1,208 @@
+{
+	"pages": [{
+		"path": "pages/login/login",
+		"style": {
+			"navigationBarTitleText": "",
+			"navigationStyle": "custom"
+		}
+	}, {
+		"path": "pages/index/index",
+		"style": {
+			"navigationBarTitleText": "首页"
+		}
+	}, {
+		"path": "pages/app-download/app-download",
+		"style": {
+			"navigationBarTitleText": "",
+			"navigationStyle": "custom"
+		}
+	}, {
+		"path": "pages/app-intro/app-intro",
+		"style": {
+			"navigationBarTitleText": "",
+			"navigationStyle": "custom"
+		}
+	}, {
+		"path": "pages/quick-bind/quick-bind",
+		"style": {
+			"navigationBarTitleText": "",
+			"navigationStyle": "custom"
+		}
+	}, {
+		"path": "pages/anchor-list/anchor-list",
+		"style": {
+			"navigationBarTitleText": "",
+			"navigationStyle": "custom"
+		}
+	}, {
+		"path": "pages/news/news",
+		"style": {
+			"navigationBarTitleText": "新闻资讯"
+		}
+	}, {
+		"path": "pages/agreement/agreement",
+		"style": {
+			"navigationBarTitleText": "",
+			"navigationStyle": "custom"
+		}
+	}, {
+		"path": "pages/promotion-rule/promotion-rule",
+		"style": {
+			"navigationBarTitleText": "",
+			"navigationStyle": "custom"
+		}
+	}, {
+		"path": "pages/promote/promote",
+		"style": {
+			"navigationBarTitleText": "",
+			"navigationStyle": "custom"
+		}
+	}, {
+		"path": "pages/chat-convention/chat-convention",
+		"style": {
+			"navigationBarTitleText": "",
+			"navigationStyle": "custom"
+		}
+	}, {
+		"path": "pages/finance-detail/finance-detail",
+		"style": {
+			"navigationBarTitleText": "",
+			"navigationStyle": "custom"
+		}
+	}, {
+		"path": "pages/notice/notice",
+		"style": {
+			"navigationBarTitleText": "",
+			"navigationStyle": "custom"
+		}
+	}, {
+		"path": "pages/service/service",
+		"style": {
+			"navigationBarTitleText": "",
+			"navigationStyle": "custom"
+		}
+	}, {
+		"path": "pages/team/team",
+		"style": {
+			"navigationBarTitleText": "",
+			"navigationStyle": "custom"
+		}
+	}, {
+		"path": "pages/performance/performance",
+		"style": {
+			"navigationBarTitleText": "平台业绩"
+		}
+	}, {
+		"path": "pages/my-performance/my-performance",
+		"style": {
+			"navigationBarTitleText": "我的业绩"
+		}
+	}, {
+		"path": "pages/service-tab/service-tab",
+		"style": {
+			"navigationBarTitleText": "客服接待"
+		}
+	}, {
+		"path": "pages/mine/mine",
+		"style": {
+			"navigationBarTitleText": "个人中心"
+		}
+	}, {
+		"path": "pages/withdraw-account/withdraw-account",
+		"style": {
+			"navigationBarTitleText": "",
+			"navigationStyle": "custom"
+		}
+	}, {
+		"path": "pages/rules/rules",
+		"style": {
+			"navigationBarTitleText": "",
+			"navigationStyle": "custom"
+		}
+	}, {
+		"path": "pages/withdraw/withdraw",
+		"style": {
+			"navigationBarTitleText": "",
+			"navigationStyle": "custom"
+		}
+	}, {
+		"path": "pages/withdraw-history/withdraw-history",
+		"style": {
+			"navigationBarTitleText": "",
+			"navigationStyle": "custom"
+		}
+	}, {
+		"path": "pages/register/register",
+		"style": {
+			"navigationBarTitleText": "",
+			"navigationStyle": "custom"
+		}
+	}, {
+		"path": "pages/anchor-resource/anchor-resource",
+		"style": {
+			"navigationBarTitleText": "",
+			"navigationStyle": "custom"
+		}
+	}, {
+		"path": "pages/anchor-resource/anchor-resource-form",
+		"style": {
+			"navigationBarTitleText": "",
+			"navigationStyle": "custom"
+		}
+	}, {
+		"path": "pages/anchor-resource/anchor-resource-list",
+		"style": {
+			"navigationBarTitleText": "",
+			"navigationStyle": "custom"
+		}
+	}, {
+		"path": "pages/anchor-resource/anchor-resource-detail",
+		"style": {
+			"navigationBarTitleText": "",
+			"navigationStyle": "custom"
+		}
+	}, {
+		"path": "pages/commission-records/commission-records",
+		"style": {
+			"navigationBarTitleText": "最近动态"
+		}
+	}],
+	"globalStyle": {
+		"navigationBarTextStyle": "black",
+		"navigationBarTitleText": "巨鲸传媒",
+		"navigationBarBackgroundColor": "#F5F0E8",
+		"backgroundColor": "#F5F0E8"
+	},
+	"tabBar": {
+		"color": "#999999",
+		"selectedColor": "#FFD54F",
+		"backgroundColor": "#FFFFFF",
+		"list": [{
+			"pagePath": "pages/news/news",
+			"text": "新闻资讯",
+			"iconPath": "static/xw.png",
+			"selectedIconPath": "static/xw.png"
+		}, {
+			"pagePath": "pages/index/index",
+			"text": "首页",
+			"iconPath": "static/index.png",
+			"selectedIconPath": "static/index.png"
+		}, {
+			"pagePath": "pages/performance/performance",
+			"text": "平台业绩",
+			"iconPath": "static/td.png",
+			"selectedIconPath": "static/td.png"
+		}, {
+			"pagePath": "pages/service-tab/service-tab",
+			"text": "客服接待",
+			"iconPath": "static/kf.png",
+			"selectedIconPath": "static/kf.png"
+		}, {
+			"pagePath": "pages/mine/mine",
+			"text": "个人中心",
+			"iconPath": "static/info.png",
+			"selectedIconPath": "static/info.png"
+		}]
+	},
+	"uniIdRouter": {}
+}

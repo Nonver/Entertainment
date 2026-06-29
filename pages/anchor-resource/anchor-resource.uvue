@@ -1,0 +1,406 @@
+<template>
+  <view class="page">
+    <!-- Navigation Header -->
+    <view class="nav-header" :style="{ paddingTop: statusBarHeight + 'px' }">
+      <view class="nav-left" @click="goBack">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <path d="M15 18l-6-6 6-6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </view>
+      <text class="nav-title">主播资源</text>
+      <view class="nav-right"></view>
+    </view>
+
+    <!-- Main Content -->
+    <scroll-view class="main-content" scroll-y="true">
+      <!-- Section Label -->
+      <view class="section-label">
+        <view class="section-line"></view>
+        <text class="section-text">功能入口</text>
+      </view>
+
+      <!-- Card 1: 主播资源录入 -->
+      <view class="entry-card" @click="goToForm">
+        <view class="card-glow"></view>
+        <view class="card-content">
+          <!-- Icon -->
+          <view class="icon-container">
+            <svg class="entry-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
+          </view>
+          <!-- Content -->
+          <view class="card-info">
+            <view class="card-title-row">
+              <text class="card-title">主播资源录入</text>
+              <text class="status-badge badge-new">新建</text>
+            </view>
+            <text class="card-desc">填写主播信息，提交后等待后台审核</text>
+          </view>
+          <!-- Chevron -->
+          <text class="chevron">›</text>
+        </view>
+      </view>
+
+      <!-- Card 2: 主播资源管理 -->
+      <view class="entry-card" @click="goToList">
+        <view class="card-glow"></view>
+        <view class="card-content">
+          <!-- Icon -->
+          <view class="icon-container">
+            <svg class="entry-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="16" y1="13" x2="8" y2="13"/>
+              <line x1="16" y1="17" x2="8" y2="17"/>
+              <polyline points="10 9 9 9 8 9"/>
+            </svg>
+          </view>
+          <!-- Content -->
+          <view class="card-info">
+            <view class="card-title-row">
+              <text class="card-title">主播资源管理</text>
+              <text class="status-badge badge-view">查看</text>
+            </view>
+            <text class="card-desc">查看已提交的资源记录和审核状态</text>
+          </view>
+          <!-- Chevron -->
+          <text class="chevron">›</text>
+        </view>
+      </view>
+
+      <!-- Divider -->
+      <view class="divider-line"></view>
+
+      <!-- Quick Stats -->
+      <view class="stats-section">
+        <view class="stats-header">
+          <text class="stats-title">最近动态</text>
+          <text class="stats-date">今日</text>
+        </view>
+        <view class="stats-row">
+          <view class="stat-card">
+            <text class="stat-label">待审核</text>
+            <text class="stat-num">{{ stats.pending }}</text>
+          </view>
+          <view class="stat-card">
+            <text class="stat-label">已通过</text>
+            <text class="stat-num">{{ stats.approved }}</text>
+          </view>
+          <view class="stat-card">
+            <text class="stat-label">本周新增</text>
+            <text class="stat-num">+{{ weeklyNew }}</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- Bottom Spacer -->
+      <view class="bottom-spacer"></view>
+    </scroll-view>
+  </view>
+</template>
+
+<script setup lang="uts">
+import { ref, onMounted } from 'vue'
+import { get } from '../../utils/request'
+import { checkLogin } from '../../utils/auth.uts'
+
+interface Stats {
+  total: number
+  pending: number
+  approved: number
+  rejected: number
+}
+
+const stats = ref<Stats>({ total: 0, pending: 0, approved: 0, rejected: 0 })
+const weeklyNew = ref<number>(0)
+const statusBarHeight = ref<number>(0)
+
+onMounted(() => {
+  // 获取状态栏高度
+  const sysInfo = uni.getSystemInfoSync()
+  statusBarHeight.value = sysInfo.statusBarHeight || 0
+  
+  if (checkLogin()) {
+    loadStats()
+  }
+})
+
+onShow(() => {
+  checkLogin()
+})
+
+function loadStats() {
+  get('/anchor-resources/stats').then((res: any) => {
+    if (res.code === 200 && res.data != null) {
+      stats.value = res.data as Stats
+      // 本周新增 = 已通过 + 待审核（简化计算）
+      weeklyNew.value = stats.value.approved + stats.value.pending
+    }
+  })
+}
+
+function goBack() {
+	// 返回上一页
+	const pages = getCurrentPages()
+	if (pages.length > 1) {
+		uni.navigateBack()
+	} else {
+		uni.reLaunch({ url: '/pages/index/index' })
+	}
+}
+
+function goToForm() {
+  uni.navigateTo({ url: '/pages/anchor-resource/anchor-resource-form' })
+}
+
+function goToList() {
+  uni.navigateTo({ url: '/pages/anchor-resource/anchor-resource-list' })
+}
+</script>
+
+<style scoped>
+.page {
+  min-height: 100vh;
+  background-color: #F6F4F0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Navigation Header */
+.nav-header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 88rpx;
+  padding: 0 24rpx;
+  background-color: #F6F4F0;
+  border-bottom: 1rpx solid rgba(234, 232, 228, 0.6);
+}
+
+.nav-left {
+  position: absolute;
+  left: 24rpx;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 80rpx;
+  height: 80rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-right {
+  position: absolute;
+  right: 24rpx;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 80rpx;
+  height: 80rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-icon {
+  width: 40rpx;
+  height: 40rpx;
+  color: #1A1A1A;
+}
+
+.nav-title {
+  font-size: 34rpx;
+  font-weight: 600;
+  color: #000000;
+  letter-spacing: 2rpx;
+}
+
+/* Main Content */
+.main-content {
+  flex: 1;
+  padding: 0 40rpx;
+}
+
+/* Section Label */
+.section-label {
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+  margin: 48rpx 0 40rpx;
+  flex-direction: unset;
+}
+
+.section-line {
+  width: 8rpx;
+  height: 32rpx;
+  background-color: #1A1A1A;
+  border-radius: 8rpx;
+}
+
+.section-text {
+  font-size: 24rpx;
+  font-weight: 500;
+  color: #8C8C8C;
+  letter-spacing: 4rpx;
+}
+
+/* Entry Card */
+.entry-card {
+  position: relative;
+  background: #FFFFFF;
+  border-radius: 32rpx;
+  margin-bottom: 32rpx;
+  box-shadow: 0 4rpx 24rpx rgba(0, 0, 0, 0.04), 0 16rpx 64rpx rgba(0, 0, 0, 0.03);
+  overflow: hidden;
+}
+
+.card-glow {
+  position: absolute;
+  top: 0;
+  left: 20%;
+  right: 20%;
+  height: 2rpx;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.8), transparent);
+}
+
+.card-content {
+  display: flex;
+  align-items: center;
+  padding: 40rpx;
+  gap: 32rpx;
+  flex-direction: row;
+}
+
+.icon-container {
+  flex-shrink: 0;
+  width: 96rpx;
+  height: 96rpx;
+  border-radius: 28rpx;
+  background-color: #F6F4F0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.entry-svg {
+  width: 44rpx;
+  height: 44rpx;
+  color: #8C8C8C;
+}
+
+.card-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.card-title-row {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-bottom: 12rpx;
+  flex-direction: initial;
+}
+
+.card-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #1A1A1A;
+}
+
+.status-badge {
+  flex-shrink: 0;
+  padding: 4rpx 16rpx;
+  border-radius: 20rpx;
+  font-size: 20rpx;
+  font-weight: 500;
+}
+
+.badge-new {
+  background-color: #1A1A1A;
+  color: #FFFFFF;
+}
+
+.badge-view {
+  background-color: #E8E6E3;
+  color: #5C5C5C;
+}
+
+.card-desc {
+  font-size: 26rpx;
+  color: #8C8C8C;
+  line-height: 1.5;
+}
+
+.chevron {
+  flex-shrink: 0;
+  font-size: 40rpx;
+  color: #B0B0B0;
+  font-weight: 300;
+}
+
+/* Divider */
+.divider-line {
+  height: 2rpx;
+  margin: 64rpx 0;
+  background: linear-gradient(90deg, transparent, #EAE8E4, transparent);
+}
+
+/* Stats Section */
+.stats-section {
+  padding: 0 4rpx;
+}
+
+.stats-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 32rpx;
+  flex-direction: unset;
+}
+
+.stats-title {
+  font-size: 24rpx;
+  font-weight: 500;
+  color: #8C8C8C;
+  letter-spacing: 4rpx;
+}
+
+.stats-date {
+  font-size: 22rpx;
+  color: #B0B0B0;
+}
+
+.stats-row {
+  display: flex;
+  gap: 24rpx;
+}
+
+.stat-card {
+  flex: 1;
+  background: #FFFFFF;
+  border-radius: 28rpx;
+  padding: 32rpx;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.03);
+}
+
+.stat-label {
+  display: block;
+  font-size: 22rpx;
+  color: #8C8C8C;
+  margin-bottom: 16rpx;
+  font-weight: 500;
+}
+
+.stat-num {
+  display: block;
+  font-size: 40rpx;
+  font-weight: bold;
+  color: #1A1A1A;
+}
+
+.bottom-spacer {
+  height: 64rpx;
+}
+</style>

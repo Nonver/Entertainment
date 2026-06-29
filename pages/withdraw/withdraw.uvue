@@ -1,0 +1,600 @@
+<template>
+	<view class="container">
+		<!-- 导航栏 -->
+		<view class="nav-bar">
+			<view class="back-btn" @click="goBack">
+				<image class="menu-arrow-icon" src="/static/svg/jt.png" mode="aspectFit" style="transform: rotate(180deg);" />
+			</view>
+			<text class="nav-title">提现</text>
+			<view class="nav-placeholder"></view>
+		</view>
+
+		<!-- 余额卡片 -->
+		<view class="balance-card">
+			<view class="balance-left">
+				<text class="balance-label">我的余额（元）</text>
+				<text class="balance-amount">{{ balance }}</text>
+			</view>
+			<view class="balance-right">
+				<image class="yuan-icon" src="/static/svg/yuan.svg" mode="aspectFit" />
+			</view>
+			<view class="balance-actions">
+				<view class="action-btn" @click="goAccount">设置提现账户</view>
+				<view class="action-btn" @click="goHistory">提现历史</view>
+			</view>
+		</view>
+
+		<!-- 表单区 -->
+		<view class="form-area">
+			<!-- 提现金额 -->
+			<view class="form-item">
+				<text class="form-label">提现金额：</text>
+				<input class="form-input" type="digit" placeholder="请输入提现金额" v-model="withdrawAmount" />
+				<text class="all-withdraw" @click="withdrawAll">全部提现</text>
+			</view>
+
+			<!-- 提现账户 -->
+			<view class="form-item clickable" @click="selectAccount">
+				<text class="form-label">提现账户：</text>
+				<text :class="['form-value', selectedAccount === '' ? 'placeholder' : '']">{{ selectedAccount === '' ? '选择账户' : selectedAccount }}</text>
+				<image class="arrow-icon" src="/static/svg/jt.png" mode="aspectFit" />
+			</view>
+
+			<!-- 提交按钮 -->
+			<view class="submit-btn" @click="submitWithdraw">
+				<text class="submit-text">提交提现</text>
+			</view>
+		</view>
+
+		<!-- 提现说明 -->
+		<view class="notice-area">
+			<text class="notice-title">提现说明：</text>
+			<text class="notice-text">单笔提现金额限制:{{ withdrawConfig.withdraw_min_amount || '300' }}.00-20000.00</text>
+			<text v-if="withdrawDailyLimitText != ''" class="notice-text">{{ withdrawDailyLimitText }}</text>
+			<text class="notice-text">提现金额必须是10.00的倍数</text>
+			<text class="notice-text">提现手续费:{{ withdrawConfig.withdraw_fee_type === 'fixed' ? withdrawConfig.withdraw_fee_fixed + '元/笔' : (withdrawConfig.withdraw_fee_percent || '8.00') + '%' }}</text>
+			<text class="notice-text">1、积分兑换提现会在1~3个工作日内到账，请您耐心等待；</text>
+			<text class="notice-text">2、积分兑换需要经过实名认证；</text>
+			<text class="notice-text">3、请确保您的支付宝账号和实名认证人，是同一个人，否则可能导致兑换失败及无法退回等后果；</text>
+			<text class="notice-text">4、积分兑换产生的手续费费，指第三方平台费用（包含相关税费）。</text>
+		</view>
+
+		<!-- 账户选择弹窗 -->
+		<view v-if="showAccountPicker" class="popup-mask" @click="showAccountPicker = false">
+			<view class="picker-content" @click.stop>
+				<view class="picker-header">
+					<text class="picker-cancel" @click="showAccountPicker = false">取消</text>
+					<text class="picker-title">选择提现账户</text>
+					<text class="picker-confirm" @click="confirmAccount">确定</text>
+				</view>
+				<view class="picker-list">
+					<view v-for="(item, index) in accountList" :key="index"
+							class="picker-item" :class="{ active: pickedIndex === index }"
+							@click="pickedIndex = index">
+						<image v-if="pickedIndex === index" class="check-icon" src="/static/svg/checked.svg" mode="aspectFit" />
+						<view v-else class="check-empty"></view>
+						<text class="picker-item-text">{{ item.label }}</text>
+						<text class="picker-item-sub">{{ item.account }}</text>
+					</view>
+				</view>
+			</view>
+		</view>
+	</view>
+</template>
+
+<script setup lang="uts">
+	import { ref } from "vue";
+	import { onShow } from "@dcloudio/uni-app";
+	import { checkLogin, getUserInfo } from "@/utils/auth.uts";
+	import {
+		getUserInfoApi,
+		getSystemConfigApi,
+		getWithdrawAccountsApi,
+		getWithdrawRecordsApi,
+		createWithdrawApi,
+		type AdminInfo,
+		type SystemConfig,
+		type WithdrawAccountsResult,
+		type WithdrawAccountItem
+	} from "@/utils/api.uts"
+
+	// ========== 数据 ==========
+	const balance = ref<string>('0')
+	const balanceNum = ref<number>(0)   // 用于数值比较的余额
+	const withdrawAmount = ref<string>('')
+	const selectedAccount = ref<string>('')
+	const showAccountPicker = ref<boolean>(false)
+	const pickedIndex = ref<number>(0)
+
+	// 提现配置（从系统配置加载）
+	const withdrawConfig = ref<{
+		withdraw_fee_type: string
+		withdraw_fee_fixed: string
+		withdraw_fee_percent: string
+		withdraw_min_amount: string
+		withdraw_daily_limit: string
+	}>({
+		withdraw_fee_type: 'percent',
+		withdraw_fee_fixed: '0.00',
+		withdraw_fee_percent: '8.00',
+		withdraw_min_amount: '300',
+		withdraw_daily_limit: '0',
+	})
+	// 每日提现上限提示文本
+	const withdrawDailyLimitText = ref<string>('')
+
+	// 账户列表（从API加载）
+	interface AccountOption {
+		label: string       // 支付宝 / 灵工银行卡
+		account: string     // 显示文本（脱敏）
+		type: number        // 1=支付宝 2=灵工
+		accountName: string // 真实姓名
+		accountNo: string   // 完整账号
+	}
+	const accountList = ref<Array<AccountOption>>([])
+
+	onShow(() => {
+		checkLogin()
+		loadBalance()
+		loadAccounts()
+		loadWithdrawConfig()
+	})
+
+	// ========== 加载余额 ==========
+	const loadBalance = () : void => {
+		getUserInfoApi().then((user : AdminInfo) => {
+			balance.value = user.balance || '0'
+			// 去掉逗号后转数值，用于比较
+			balanceNum.value = parseFloat((user.balance || '0').replace(/,/g, '')) || 0
+		}).catch((_err : any) => {})
+	}
+
+	// ========== 加载提现账户列表 ==========
+	const loadAccounts = () : void => {
+		getWithdrawAccountsApi({ account_type: 2 }).then((data : WithdrawAccountsResult) => {
+			const list : AccountOption[] = []
+			if (data.list.length > 0) {
+				const user = data.list[0]
+				// 支付宝账户
+				if (user.alipay != null) {
+					const alipay = user.alipay as WithdrawAccountItem
+					list.push({
+						label: '支付宝',
+						account: alipay.accountNo.substring(0, 3) + '****' + (alipay.accountNo.length >= 4 ? alipay.accountNo.substring(alipay.accountNo.length - 4) : ''),
+						type: 1,
+						accountName: alipay.realName,
+						accountNo: alipay.accountNo
+					})
+				}
+				// 灵工银行卡
+				if (user.lingong != null) {
+					const lingong = user.lingong as WithdrawAccountItem
+					const bankNo = lingong.bankNo || lingong.accountNo || ''
+					list.push({
+						label: '灵工银行卡',
+						account: bankNo.length > 8 ? bankNo.substring(0, 4) + ' **** **** ' + bankNo.substring(bankNo.length - 4) : bankNo,
+						type: 2,
+						accountName: lingong.realName,
+						accountNo: bankNo
+					})
+				}
+			}
+			accountList.value = list
+			// 重置选择
+			selectedAccount.value = ''
+			pickedIndex.value = 0
+		}).catch((_err : any) => {})
+	}
+
+	// ========== 加载系统配置（提现参数） ==========
+	const loadWithdrawConfig = () : void => {
+		getSystemConfigApi().then((cfg : SystemConfig) => {
+			withdrawConfig.value = {
+				withdraw_fee_type: cfg.withdraw_fee_type || 'percent',
+				withdraw_fee_fixed: cfg.withdraw_fee_fixed || '0.00',
+				withdraw_fee_percent: cfg.withdraw_fee_percent || '8.00',
+				withdraw_min_amount: cfg.withdraw_min_amount || '300',
+				withdraw_daily_limit: cfg.withdraw_daily_limit || '0',
+			}
+			// 每日上限提示
+			const limit = parseFloat(cfg.withdraw_daily_limit || '0')
+			if (limit > 0) {
+				withdrawDailyLimitText.value = '每日提现上限:' + limit.toFixed(2) + '元'
+			} else {
+				withdrawDailyLimitText.value = ''
+			}
+		}).catch((_err : any) => {})
+	}
+
+	// 计算手续费
+	const calcFee = (amount: number) : { fee: number, actual: number, feeLabel: string } => {
+		const cfg = withdrawConfig.value
+		let fee = 0
+		let feeLabel = ''
+		if (cfg.withdraw_fee_type === 'fixed') {
+			fee = parseFloat(cfg.withdraw_fee_fixed) || 0
+			feeLabel = parseFloat(cfg.withdraw_fee_fixed).toFixed(2) + '元/笔'
+		} else {
+			const rate = parseFloat(cfg.withdraw_fee_percent) || 0
+			fee = amount * rate / 100
+			feeLabel = rate.toFixed(2) + '%'
+		}
+		const actual = amount - fee
+		return { fee: parseFloat(fee.toFixed(2)), actual: parseFloat(actual.toFixed(2)), feeLabel }
+	}
+
+	// 返回
+	const goBack = () : void => {
+		const pages = getCurrentPages()
+		if (pages.length > 1) {
+			uni.navigateBack()
+		} else {
+			uni.reLaunch({ url: '/pages/mine/mine' })
+		}
+	}
+
+	// 设置提现账户
+	const goAccount = () : void => {
+		uni.navigateTo({ url: '/pages/withdraw-account/withdraw-account' })
+	}
+
+	// 提现历史
+	const goHistory = () : void => {
+		uni.navigateTo({ url: '/pages/withdraw-history/withdraw-history' })
+	}
+
+	// 全部提现
+	const withdrawAll = () : void => {
+		withdrawAmount.value = String(balanceNum.value)
+	}
+
+	// 选择账户
+	const selectAccount = () : void => {
+		if (accountList.value.length === 0) {
+			uni.showModal({
+				title: '提示',
+				content: '请至少绑定一个提现账号',
+				showCancel: false,
+				success: (_res : ShowModalSuccessCallbackResult) : void => {
+					goAccount()
+				}
+			})
+			return
+		}
+		showAccountPicker.value = true
+	}
+
+	// 确认选择
+	const confirmAccount = () : void => {
+		const item = accountList.value[pickedIndex.value]
+		selectedAccount.value = item.label + ' - ' + item.account
+		showAccountPicker.value = false
+	}
+
+	// 提交提现
+	const submitWithdraw = () : void => {
+		if (withdrawAmount.value === '') {
+			uni.showToast({ title: '请输入提现金额', icon: 'none' })
+			return
+		}
+		const amount = parseFloat(withdrawAmount.value)
+		const minAmount = parseFloat(withdrawConfig.value.withdraw_min_amount || '300')
+		if (isNaN(amount) || amount < minAmount || amount > 20000) {
+			uni.showToast({ title: '提现金额需在' + minAmount.toFixed(2) + '-20000之间', icon: 'none' })
+			return
+		}
+		if (amount % 10 !== 0) {
+			uni.showToast({ title: '提现金额须为10的倍数', icon: 'none' })
+			return
+		}
+		// 超出余额校验
+		if (amount > balanceNum.value) {
+			uni.showToast({ title: '提现金额超出余额', icon: 'none' })
+			return
+		}
+		if (selectedAccount.value === '') {
+			uni.showToast({ title: '请选择提现账户', icon: 'none' })
+			return
+		}
+
+		// 获取选中的账户信息
+		const account = accountList.value[pickedIndex.value]
+		const { fee, actual, feeLabel } = calcFee(amount)
+		
+		uni.showModal({
+			title: '确认提现',
+			content: `提现金额：${amount}元\n手续费（${feeLabel}）：${fee.toFixed(2)}元\n实际到账：${actual.toFixed(2)}元`,
+			success: (res : ShowModalSuccessCallbackResult) : void => {
+				if (res.confirm) {
+					uni.showLoading({ title: '提交中...' })
+					createWithdrawApi({
+						amount: amount,
+						type: account.type,
+						account_name: account.accountName,
+						account_no: account.accountNo
+					}).then(() => {
+						uni.hideLoading()
+						uni.showToast({ title: '提交成功', icon: 'success' })
+						// 重置表单
+						withdrawAmount.value = ''
+						selectedAccount.value = ''
+						// 刷新余额和账户列表
+						loadBalance()
+					}).catch((_err : any) => {
+						uni.hideLoading()
+						uni.showToast({ title: '提交失败，请重试', icon: 'none' })
+					})
+				}
+			}
+		})
+	}
+</script>
+
+<style>
+	.container {
+		background-color: #F5F0E8;
+		min-height: 100vh;
+	}
+
+	.menu-arrow-icon {
+		width: 28rpx;
+		height: 28rpx;
+	}
+
+	/* 导航栏 */
+	.nav-bar {
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		justify-content: space-between;
+		padding: 56rpx 24rpx 16rpx 24rpx;
+		background-color: #FFFFFF;
+	}
+
+	.back-btn {
+		width: 70rpx;
+		height: 70rpx;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+	}
+
+	.nav-title {
+		font-size: 34rpx;
+		color: #333333;
+		font-weight: 600;
+	}
+
+	.nav-placeholder {
+		width: 70rpx;
+	}
+
+	/* 余额卡片 */
+	.balance-card {
+		margin: 24rpx;
+		background: linear-gradient(135deg, #F5C76B, #E8B84D);
+		border-radius: 16rpx;
+		padding: 28rpx 24rpx;
+		position: relative;
+		overflow: hidden;
+	}
+
+	.balance-left {
+		position: relative;
+		z-index: 2;
+	}
+
+	.balance-label {
+		font-size: 26rpx;
+		color: rgba(255, 255, 255, 0.9);
+		display: block;
+		margin-bottom: 10rpx;
+	}
+
+	.balance-amount {
+		font-size: 56rpx;
+		color: #FFFFFF;
+		font-weight: bold;
+	}
+
+	.balance-right {
+		position: absolute;
+		right: -20rpx;
+		bottom: -20rpx;
+		z-index: 1;
+	}
+
+	.yuan-icon {
+		width: 140rpx;
+		height: 140rpx;
+		opacity: 0.3;
+	}
+
+	.balance-actions {
+		display: flex;
+		flex-direction: row;
+		margin-top: 20rpx;
+		position: relative;
+		z-index: 2;
+	}
+
+	.action-btn {
+		background-color: rgba(255, 255, 255, 0.3);
+		padding: 8rpx 22rpx;
+		border-radius: 30rpx;
+		margin-right: 16rpx;
+		font-size: 24rpx;
+		color: #FFFFFF;
+	}
+
+	/* 表单区 */
+	.form-area {
+		margin: 0 24rpx;
+	}
+
+	.form-item {
+		background-color: #FFFFFF;
+		border-radius: 12rpx;
+		padding: 26rpx 24rpx;
+		margin-bottom: 18rpx;
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+	}
+
+	.form-label {
+		font-size: 28rpx;
+		color: #333333;
+		font-weight: 500;
+		min-width: 160rpx;
+	}
+
+	.form-input {
+		flex: 1;
+		font-size: 28rpx;
+		color: #333333;
+	}
+
+	.all-withdraw {
+		font-size: 26rpx;
+		color: #F0C275;
+		font-weight: 500;
+		margin-left: auto;
+	}
+
+	.form-value {
+		flex: 1;
+		font-size: 28rpx;
+		color: #333333;
+	}
+
+	.placeholder {
+		color: #CCCCCC;
+	}
+
+	.arrow-icon {
+		width: 24rpx;
+		height: 24rpx;
+		margin-left: 12rpx;
+	}
+
+	/* 提交按钮 */
+	.submit-btn {
+		background: linear-gradient(135deg, #F5C76B, #E8B84D);
+		border-radius: 44rpx;
+		padding: 24rpx 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		margin-top: 10rpx;
+	}
+
+	.submit-text {
+		font-size: 32rpx;
+		color: #FFFFFF;
+		font-weight: 600;
+	}
+
+	/* 提现说明 */
+	.notice-area {
+		margin: 30rpx 24rpx 40rpx 24rpx;
+	}
+
+	.notice-title {
+		font-size: 26rpx;
+		color: #333333;
+		font-weight: 600;
+		display: block;
+		margin-bottom: 10rpx;
+	}
+
+	.notice-text {
+		font-size: 24rpx;
+		color: #999999;
+		line-height: 40rpx;
+		display: block;
+	}
+
+	/* 弹窗遮罩 */
+	.popup-mask {
+		position: fixed;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		background-color: rgba(0, 0, 0, 0.5);
+		z-index: 999;
+		display: flex;
+		justify-content: flex-end;
+		align-items: flex-end;
+	}
+
+	.picker-content {
+		background-color: #FFFFFF;
+		border-radius: 24rpx 24rpx 0 0;
+		width: 100%;
+		max-height: 60vh;
+	}
+
+	.picker-header {
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		justify-content: space-between;
+		padding: 28rpx 30rpx;
+		border-bottom: 1rpx solid #F0EDE6;
+	}
+
+	.picker-cancel {
+		font-size: 28rpx;
+		color: #999999;
+	}
+
+	.picker-title {
+		font-size: 32rpx;
+		color: #333333;
+		font-weight: 600;
+	}
+
+	.picker-confirm {
+		font-size: 28rpx;
+		color: #F0C275;
+		font-weight: 600;
+	}
+
+	.picker-list {
+		padding: 16rpx 0;
+	}
+
+	.picker-item {
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		padding: 24rpx 30rpx;
+	}
+
+	.check-icon {
+		width: 36rpx;
+		height: 36rpx;
+		margin-right: 16rpx;
+	}
+
+	.check-empty {
+		width: 36rpx;
+		height: 36rpx;
+		border: 2rpx solid #DDDDDD;
+		border-radius: 50%;
+		margin-right: 16rpx;
+	}
+
+	.picker-item-text {
+		font-size: 28rpx;
+		color: #333333;
+		margin-right: 16rpx;
+	}
+
+	.picker-item-sub {
+		font-size: 24rpx;
+		color: #999999;
+	}
+</style>

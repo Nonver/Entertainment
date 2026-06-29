@@ -1,0 +1,706 @@
+<template>
+  <view class="page">
+
+    <!-- Navigation Header -->
+    <view class="nav-header" :style="{ paddingTop: statusBarHeight + 'px' }">
+      <view class="nav-left" @click="goBack">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <path d="M15 18l-6-6 6-6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </view>
+      <text class="nav-title">主播资源录入</text>
+      <view class="nav-right"></view>
+    </view>
+
+    <!-- Main Content -->
+    <scroll-view class="main-content" scroll-y="true">
+      <!-- Page Header -->
+      <view class="page-header">
+        <text class="page-subtitle">资源管理</text>
+        <text class="page-title">录入新主播信息</text>
+        <text class="page-desc">请准确填写主播的完整信息，提交后将进入审核流程。</text>
+      </view>
+
+      <!-- Form Card -->
+      <view class="form-card">
+        <!-- Form Decoration Bar -->
+        <view class="form-decoration"></view>
+
+        <!-- Field 1: 主播平台 -->
+        <view class="form-item">
+          <text class="form-label">主播平台</text>
+          <view class="input-wrapper">
+            <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <rect x="2" y="3" width="20" height="14" rx="2"/>
+              <line x1="8" y1="21" x2="16" y2="21"/>
+              <line x1="12" y1="17" x2="12" y2="21"/>
+            </svg>
+            <input type="text" v-model="form.platform" placeholder="请输入主播平台" placeholder-class="ph" class="form-input" />
+          </view>
+        </view>
+
+        <!-- Field 2: 主播昵称 -->
+        <view class="form-item">
+          <text class="form-label">主播昵称 <text class="required">*</text></text>
+          <view class="input-wrapper">
+            <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
+              <circle cx="12" cy="7" r="4"/>
+            </svg>
+            <input type="text" v-model="form.nickname" placeholder="请输入主播昵称" placeholder-class="ph" class="form-input" />
+          </view>
+        </view>
+
+        <!-- Field 2.5: 真实姓名 -->
+        <view class="form-item">
+          <text class="form-label">真实姓名</text>
+          <view class="input-wrapper">
+            <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+            </svg>
+            <input type="text" v-model="form.real_name" placeholder="请输入真实姓名" placeholder-class="ph" class="form-input" />
+          </view>
+        </view>
+
+        <!-- Field 2.6: 性别 -->
+        <view class="form-item">
+          <text class="form-label">性别</text>
+          <view class="gender-row">
+            <view class="gender-option" :class="{ active: form.gender === '男' }" @click="form.gender = '男'">
+              <text :class="form.gender === '男' ? 'gender-text-active' : 'gender-text'">男</text>
+            </view>
+            <view class="gender-option" :class="{ active: form.gender === '女' }" @click="form.gender = '女'">
+              <text :class="form.gender === '女' ? 'gender-text-active' : 'gender-text'">女</text>
+            </view>
+          </view>
+        </view>
+
+        <!-- Field 2.7: 年龄 -->
+        <view class="form-item">
+          <text class="form-label">年龄</text>
+          <view class="input-wrapper">
+            <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M12 6v6l4 2"/>
+            </svg>
+            <input type="number" v-model="form.age" placeholder="请输入年龄" placeholder-class="ph" class="form-input" />
+          </view>
+        </view>
+
+        <!-- Field 3: 主播手机号 -->
+        <view class="form-item">
+          <text class="form-label">主播手机号 <text class="required">*</text></text>
+          <view class="input-wrapper">
+            <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/>
+            </svg>
+            <input type="tel" v-model="form.phone" maxlength="11" placeholder="请输入手机号" placeholder-class="ph" class="form-input" />
+          </view>
+        </view>
+
+        <!-- Field 4: 主播微信 -->
+        <view class="form-item">
+          <text class="form-label">主播微信 <text class="required">*</text></text>
+          <view class="input-wrapper">
+            <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/>
+            </svg>
+            <input type="text" v-model="form.wechat" placeholder="请输入微信号" placeholder-class="ph" class="form-input" />
+          </view>
+        </view>
+
+        <!-- Field 4.5: 主播照片 -->
+        <view class="form-item">
+          <text class="form-label">主播照片</text>
+          <view class="upload-area" @click="choosePhoto">
+            <image v-if="form.photo" :src="form.photo" mode="aspectFill" class="preview-img"></image>
+            <view v-else class="upload-placeholder">
+              <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="#b5ad9e" stroke-width="1.8">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                <circle cx="8.5" cy="8.5" r="1.5"/>
+                <polyline points="21 15 16 10 5 21"/>
+              </svg>
+              <text class="upload-text">点击上传主播照片</text>
+            </view>
+          </view>
+        </view>
+
+        <!-- Field 4.6: 主播流水 -->
+        <view class="form-item">
+          <text class="form-label">主播流水 <text class="required">*</text></text>
+          <view class="upload-area" @click="chooseFlowPhoto">
+            <image v-if="form.flow_photo" :src="form.flow_photo" mode="aspectFill" class="preview-img"></image>
+            <view v-else class="upload-placeholder">
+              <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="#b5ad9e" stroke-width="1.8">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                <circle cx="8.5" cy="8.5" r="1.5"/>
+                <polyline points="21 15 16 10 5 21"/>
+              </svg>
+              <text class="upload-text">点击上传流水截图</text>
+            </view>
+          </view>
+        </view>
+
+        <!-- Field 5: 主播工会 -->
+        <view class="form-item">
+          <text class="form-label">主播工会</text>
+          <view class="input-wrapper">
+            <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+              <circle cx="9" cy="7" r="4"/>
+              <path d="M23 21v-2a4 4 0 00-3-3.87"/>
+              <path d="M16 3.13a4 4 0 010 7.75"/>
+            </svg>
+            <input type="text" v-model="form.union_name" placeholder="请输入所属工会" placeholder-class="ph" class="form-input" />
+          </view>
+        </view>
+
+        <!-- Field 6: 主播现待遇 -->
+        <view class="form-item">
+          <text class="form-label">主播现待遇</text>
+          <view class="input-wrapper">
+            <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M12 6v6l4 2"/>
+            </svg>
+            <input type="text" v-model="form.current_salary" placeholder="请输入当前待遇情况" placeholder-class="ph" class="form-input" />
+          </view>
+        </view>
+
+        <!-- Field 7: 主播到期时间 -->
+        <view class="form-item">
+          <text class="form-label">主播到期时间 <text class="required">*</text></text>
+          <view class="input-wrapper">
+            <picker mode="date" :value="form.expire_date" @change="onDateChange" style="width: 100%;">
+				<svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="top: 25rpx;">
+				  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+				  <line x1="16" y1="2" x2="16" y2="6"/>
+				  <line x1="8" y1="2" x2="8" y2="6"/>
+				  <line x1="3" y1="10" x2="21" y2="10"/>
+				</svg>
+              <view class="picker-display">
+                <text :class="form.expire_date ? 'picker-text' : 'picker-placeholder'">
+                  {{ form.expire_date || '请选择到期时间' }}
+                </text>
+                
+              </view>
+            </picker>
+          </view>
+        </view>
+
+        <!-- Field 8: 运营人员 -->
+        <!-- <view class="form-item">
+          <text class="form-label">运营人员 <text class="required">*</text></text>
+          <view class="input-wrapper">
+            <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
+              <circle cx="12" cy="7" r="4"/>
+            </svg>
+            <input type="text" v-model="form.operator" placeholder="请输入运营人员姓名" placeholder-class="ph" class="form-input" />
+          </view>
+        </view> -->
+      </view>
+
+      <!-- Info Note -->
+      <view class="info-note">
+        <view class="info-icon">
+          <svg class="info-svg" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+          </svg>
+        </view>
+        <text class="info-text">信息提交后将进入审核流程，请确保填写内容真实准确</text>
+      </view>
+
+      <!-- Bottom Spacer -->
+      <view class="bottom-spacer"></view>
+    </scroll-view>
+
+    <!-- Fixed Bottom Action Bar -->
+    <view class="action-bar">
+      <button class="submit-btn" @click="handleSubmit" :disabled="submitting">
+        {{ submitting ? '提交中...' : '提交审核' }}
+      </button>
+    </view>
+  </view>
+</template>
+
+<script setup lang="uts">
+import { ref, reactive } from 'vue'
+import { post, upload } from '../../utils/request'
+import { checkLogin } from '../../utils/auth.uts'
+
+const submitting = ref(false)
+
+// 登录检查
+onShow(() => {
+  checkLogin()
+})
+
+const statusBarHeight = ref<number>(0)
+
+onMounted(() => {
+  // 获取状态栏高度
+  const sysInfo = uni.getSystemInfoSync()
+  statusBarHeight.value = sysInfo.statusBarHeight || 0
+  
+  checkLogin()
+})
+
+const form = reactive({
+  platform: '',
+  nickname: '',
+  real_name: '',
+  gender: '',
+  age: '',
+  phone: '',
+  wechat: '',
+  photo: '',
+  flow_photo: '',
+  union_name: '',
+  current_salary: '',
+  expire_date: '',
+  // operator: ''
+})
+
+function goBack() {
+	// 返回上一页
+	const pages = getCurrentPages()
+	if (pages.length > 1) {
+		uni.navigateBack()
+	} else {
+		uni.reLaunch({ url: '/pages/anchor-resource/anchor-resource' })
+	}
+}
+
+function onDateChange(e: any) {
+  form.expire_date = e.detail.value as string
+}
+
+function choosePhoto() {
+  uni.chooseImage({
+    count: 1,
+    sizeType: ['compressed'],
+    sourceType: ['album', 'camera'],
+    success: (res: ChooseImageSuccessCallbackResult) => {
+      upload(res.tempFilePaths[0]).then((res: any) => {
+        form.photo = res.data.url as string
+        uni.showToast({ title: '上传成功', icon: 'success' })
+      })
+    }
+  })
+}
+
+function chooseFlowPhoto() {
+  uni.chooseImage({
+    count: 1,
+    sizeType: ['compressed'],
+    sourceType: ['album', 'camera'],
+    success: (res: ChooseImageSuccessCallbackResult) => {
+      upload(res.tempFilePaths[0]).then((res: any) => {
+        console.log('流水上传返回:', JSON.stringify(res))
+        form.flow_photo = res.data.url as string
+        uni.showToast({ title: '上传成功', icon: 'success' })
+      }).catch((err: any) => {
+        console.log('流水上传失败:', JSON.stringify(err))
+        uni.showToast({ title: '流水上传失败', icon: 'none' })
+      })
+    }
+  })
+}
+
+function validateForm(): boolean {
+  if (!form.platform.trim()) {
+    uni.showToast({ title: '请输入主播平台', icon: 'none' })
+    return false
+  }
+  if (!form.nickname.trim()) {
+    uni.showToast({ title: '请输入主播昵称', icon: 'none' })
+    return false
+  }
+  if (!form.phone.trim()) {
+    uni.showToast({ title: '请输入手机号', icon: 'none' })
+    return false
+  }
+  if (!form.wechat.trim()) {
+    uni.showToast({ title: '请输入微信号', icon: 'none' })
+    return false
+  }
+  if (!form.expire_date.trim()) {
+    uni.showToast({ title: '请选择到期时间', icon: 'none' })
+    return false
+  }
+  if (!form.flow_photo.trim()) {
+    uni.showToast({ title: '请上传主播流水截图', icon: 'none' })
+    return false
+  }
+  // if (!form.operator.trim()) {
+  //   uni.showToast({ title: '请输入运营人员', icon: 'none' })
+  //   return false
+  // }
+  return true
+}
+
+function handleSubmit() {
+  console.log('提交前表单数据:', JSON.stringify(form))
+  if (!validateForm()) {
+    return
+  }
+
+  submitting.value = true
+  post('/anchor-resources', {
+    platform: form.platform || '',
+    nickname: form.nickname || '',
+    real_name: form.real_name || '',
+    gender: form.gender || '',
+    age: form.age || '',
+    phone: form.phone || '',
+    wechat: form.wechat || '',
+    photo: form.photo || '',
+    flow_photo: form.flow_photo || '',
+    union_name: form.union_name || '',
+    current_salary: form.current_salary || '',
+    expire_date: form.expire_date || ''
+  }).then((res: any) => {
+    if (res.code === 200) {
+      uni.showToast({ title: res.message || '提交成功', icon: 'success' })
+      setTimeout(() => {
+        uni.navigateBack()
+      }, 1500)
+    } else {
+      uni.showToast({ title: res.message || '提交失败', icon: 'none' })
+    }
+  }).catch(() => {
+    uni.showToast({ title: '网络错误', icon: 'none' })
+  }).finally(() => {
+    submitting.value = false
+  })
+}
+</script>
+
+<style scoped>
+.page {
+  min-height: 100vh;
+  background-color: #faf9f6;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Navigation Header */
+.nav-header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 88rpx;
+  padding: 0 32rpx;
+  background-color: #faf9f6;
+  border-bottom: 1rpx solid rgba(237, 233, 225, 0.6);
+}
+
+.nav-left {
+  position: absolute;
+  left: 32rpx;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 80rpx;
+  height: 80rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-right {
+  position: absolute;
+  right: 32rpx;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 80rpx;
+  height: 80rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-icon {
+  width: 40rpx;
+  height: 40rpx;
+  color: #807a70;
+}
+
+.nav-title {
+  font-size: 34rpx;
+  font-weight: bold;
+  color: #333333;
+}
+
+/* Main Content */
+.main-content {
+  flex: 1;
+  padding: 0 40rpx;
+}
+
+/* Page Header */
+.page-header {
+  padding: 40rpx 0 48rpx;
+}
+
+.page-subtitle {
+  display: block;
+  font-size: 24rpx;
+  font-weight: 500;
+  color: #e08a1a;
+  letter-spacing: 2rpx;
+  text-transform: uppercase;
+  margin-bottom: 8rpx;
+}
+
+.page-title {
+  display: block;
+  font-size: 48rpx;
+  font-weight: bold;
+  color: #333333;
+  line-height: 1.2;
+  margin-bottom: 16rpx;
+}
+
+.page-desc {
+  display: block;
+  font-size: 26rpx;
+  color: #9a9285;
+  line-height: 1.6;
+}
+
+/* Form Card */
+.form-card {
+  background: #FFFFFF;
+  border-radius: 32rpx;
+  overflow: hidden;
+  box-shadow: 0 8rpx 64rpx rgba(0, 0, 0, 0.04);
+}
+
+.form-decoration {
+  height: 6rpx;
+  background: linear-gradient(to right, #fad04e, #f9c02f, #f5a623);
+  margin-bottom: 30rpx;
+}
+
+.form-item {
+  padding: 0 48rpx;
+  margin-bottom: 36rpx;
+}
+
+.form-label {
+  display: block;
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #333333;
+  margin-bottom: 16rpx;
+}
+
+.required {
+  color: #f5a623;
+  margin-left: 4rpx;
+}
+
+/* Input Wrapper */
+.input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+}
+
+.input-icon {
+  position: absolute;
+  left: 32rpx;
+  width: 40rpx;
+  height: 40rpx;
+  color: #b5ad9e;
+  z-index: 1;
+}
+
+.form-input {
+  width: 100%;
+  height: 96rpx;
+  padding-left: 96rpx;
+  padding-right: 32rpx;
+  background-color: #f5f3ee;
+  border: 2rpx solid #e0dbd2;
+  border-radius: 24rpx;
+  font-size: 28rpx;
+  color: #333333;
+}
+
+.ph {
+  color: #b5ad9e;
+}
+
+/* Upload Area */
+.upload-area {
+  width: 200rpx;
+  height: 200rpx;
+  background-color: #f5f3ee;
+  border: 2rpx dashed #d0c9bc;
+  border-radius: 20rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.upload-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.upload-icon {
+  width: 48rpx;
+  height: 48rpx;
+}
+
+.upload-text {
+  font-size: 22rpx;
+  color: #b5ad9e;
+}
+
+.preview-img {
+  width: 200rpx;
+  height: 200rpx;
+  border-radius: 20rpx;
+}
+
+/* Gender Selector */
+.gender-row {
+  display: flex;
+  flex-direction: row;
+  gap: 24rpx;
+}
+
+.gender-option {
+  flex: 1;
+  height: 96rpx;
+  background-color: #f5f3ee;
+  border: 2rpx solid #e0dbd2;
+  border-radius: 24rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gender-option.active {
+  background-color: #fdf8e8;
+  border-color: #f5a623;
+}
+
+.gender-text {
+  font-size: 28rpx;
+  color: #9a9285;
+}
+
+.gender-text-active {
+  font-size: 28rpx;
+  color: #e08a1a;
+  font-weight: 600;
+}
+
+/* Picker Display */
+.picker-display {
+  width: 100%;
+  height: 96rpx;
+  padding-left: 96rpx;
+  padding-right: 32rpx;
+  background-color: #f5f3ee;
+  border: 2rpx solid #e0dbd2;
+  border-radius: 24rpx;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.picker-text {
+  font-size: 28rpx;
+  color: #333333;
+}
+
+.picker-placeholder {
+  font-size: 28rpx;
+  color: #b5ad9e;
+}
+
+.picker-arrow {
+  width: 32rpx;
+  height: 32rpx;
+  color: #b5ad9e;
+}
+
+/* Info Note */
+.info-note {
+  display: flex;
+  align-items: flex-start;
+  padding: 32rpx 40rpx;
+  gap: 24rpx;
+}
+
+.info-icon {
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: 50%;
+  background-color: #fdf0c4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 4rpx;
+}
+
+.info-svg {
+  width: 24rpx;
+  height: 24rpx;
+  color: #e08a1a;
+}
+
+.info-text {
+  font-size: 24rpx;
+  color: #9a9285;
+  line-height: 1.6;
+}
+
+/* Bottom Spacer */
+.bottom-spacer {
+  height: 200rpx;
+}
+
+/* Action Bar */
+.action-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: rgba(250, 249, 246, 0.9);
+  backdrop-filter: blur(20rpx);
+  -webkit-backdrop-filter: blur(20rpx);
+  border-top: 1rpx solid rgba(237, 233, 225, 0.6);
+  padding: 32rpx 40rpx;
+  padding-bottom: calc(32rpx + env(safe-area-inset-bottom));
+  z-index: 10;
+}
+
+.submit-btn {
+  width: 100%;
+  height: 112rpx;
+  background: linear-gradient(135deg, #fad04e, #f5a623);
+  color: #333333;
+  font-size: 32rpx;
+  font-weight: bold;
+  border-radius: 56rpx;
+  border: none;
+  box-shadow: 0 8rpx 48rpx rgba(245, 166, 35, 0.35);
+  letter-spacing: 4rpx;
+}
+
+.submit-btn[disabled] {
+  opacity: 0.6;
+}
+</style>

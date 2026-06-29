@@ -1,0 +1,576 @@
+<template>
+	<view class="page">
+		<!-- 顶部渐变区域 -->
+		<view class="header-bg">
+			<view class="header-content">
+				<text class="page-title">最近动态</text>
+			</view>
+		</view>
+
+		<!-- 时间筛选区域 -->
+		<view class="filter-card">
+			<view class="filter-row">
+				<view class="filter-item" @click="showStartDatePicker = true">
+					<text class="filter-label">开始时间</text>
+					<text class="filter-value" :class="{ 'placeholder': !startDate }">{{ startDate || '请选择' }}</text>
+				</view>
+				<text class="filter-separator">至</text>
+				<view class="filter-item" @click="showEndDatePicker = true">
+					<text class="filter-label">结束时间</text>
+					<text class="filter-value" :class="{ 'placeholder': !endDate }">{{ endDate || '请选择' }}</text>
+				</view>
+				<view class="filter-btn" @click="onSearch">
+					<text class="filter-btn-text">查询</text>
+				</view>
+			</view>
+		</view>
+
+		<!-- 统计卡片 -->
+		<view class="stats-card">
+			<view class="stats-item">
+				<text class="stats-label">记录总数</text>
+				<text class="stats-value">{{ total }}</text>
+			</view>
+			<view class="stats-divider"></view>
+			<view class="stats-item">
+				<text class="stats-label">佣金合计</text>
+				<text class="stats-value highlight">¥{{ totalAmount }}</text>
+			</view>
+		</view>
+
+		<!-- 记录列表 -->
+		<view class="list-card">
+			<view v-if="recordList.length === 0 && !loading" class="empty-state">
+				<text class="empty-icon">📋</text>
+				<text class="empty-text">暂无记录</text>
+			</view>
+			<view v-else>
+				<view v-for="(item, index) in recordList" :key="index" class="record-item">
+					<view class="record-left">
+						<view class="record-icon">
+							<text class="icon-text">¥</text>
+						</view>
+						<view class="record-info">
+							<text class="record-type">{{ item.type_name || '佣金收入' }}</text>
+							<text class="record-desc">{{ item.remark || '-' }}</text>
+							<text class="record-time">{{ formatTime(item.created_at) }}</text>
+						</view>
+					</view>
+					<text class="record-amount">+{{ formatMoney(item.commission_amount) }}</text>
+				</view>
+				
+				<!-- 加载更多 -->
+				<view v-if="loading" class="loading-more">
+					<text class="loading-text">加载中...</text>
+				</view>
+				<view v-else-if="hasMore" class="load-more" @click="loadMore">
+					<text class="load-more-text">加载更多</text>
+				</view>
+				<view v-else-if="recordList.length > 0" class="no-more">
+					<text class="no-more-text">没有更多了</text>
+				</view>
+			</view>
+		</view>
+
+		<!-- 日期选择器弹窗 -->
+		<view v-if="showStartDatePicker" class="picker-mask" @click.self="showStartDatePicker = false">
+			<view class="picker-content">
+				<view class="picker-header">
+					<text class="picker-title">选择开始日期</text>
+					<text class="picker-close" @click="showStartDatePicker = false">✕</text>
+				</view>
+				<picker-view class="picker-view" :value="startDateValue" @change="onStartDateChange">
+					<picker-view-column>
+						<view v-for="year in years" :key="year" class="picker-item">{{ year }}年</view>
+					</picker-view-column>
+					<picker-view-column>
+						<view v-for="month in months" :key="month" class="picker-item">{{ month }}月</view>
+					</picker-view-column>
+					<picker-view-column>
+						<view v-for="day in days" :key="day" class="picker-item">{{ day }}日</view>
+					</picker-view-column>
+				</picker-view>
+				<view class="picker-footer">
+					<text class="picker-confirm" @click="confirmStartDate">确定</text>
+				</view>
+			</view>
+		</view>
+
+		<view v-if="showEndDatePicker" class="picker-mask" @click.self="showEndDatePicker = false">
+			<view class="picker-content">
+				<view class="picker-header">
+					<text class="picker-title">选择结束日期</text>
+					<text class="picker-close" @click="showEndDatePicker = false">✕</text>
+				</view>
+				<picker-view class="picker-view" :value="endDateValue" @change="onEndDateChange">
+					<picker-view-column>
+						<view v-for="year in years" :key="year" class="picker-item">{{ year }}年</view>
+					</picker-view-column>
+					<picker-view-column>
+						<view v-for="month in months" :key="month" class="picker-item">{{ month }}月</view>
+					</picker-view-column>
+					<picker-view-column>
+						<view v-for="day in days" :key="day" class="picker-item">{{ day }}日</view>
+					</picker-view-column>
+				</picker-view>
+				<view class="picker-footer">
+					<text class="picker-confirm" @click="confirmEndDate">确定</text>
+				</view>
+			</view>
+		</view>
+	</view>
+</template>
+
+<script setup lang="uts">
+	import { ref, computed } from 'vue'
+	import { onLoad, onReachBottom } from '@dcloudio/uni-app'
+	import { get } from '../../utils/request.uts'
+
+	// 列表数据
+	const recordList = ref<any[]>([])
+	const loading = ref(false)
+	const hasMore = ref(true)
+	const page = ref(1)
+	const pageSize = 20
+	const total = ref(0)
+	const totalAmount = ref('0.00')
+
+	// 时间筛选
+	const startDate = ref('')
+	const endDate = ref('')
+	const showStartDatePicker = ref(false)
+	const showEndDatePicker = ref(false)
+	const startDateValue = ref([0, 0, 0])
+	const endDateValue = ref([0, 0, 0])
+
+	// 日期选择器数据
+	const currentYear = new Date().getFullYear()
+	const years = Array.from({ length: 5 }, (_, i) => currentYear - i)
+	const months = Array.from({ length: 12 }, (_, i) => i + 1)
+	const days = Array.from({ length: 31 }, (_, i) => i + 1)
+
+	onLoad(() => {
+		// 默认查询最近30天
+		const end = new Date()
+		const start = new Date()
+		start.setDate(start.getDate() - 30)
+		endDate.value = formatDate(end)
+		startDate.value = formatDate(start)
+		loadRecords()
+	})
+
+	onReachBottom(() => {
+		if (hasMore.value && !loading.value) {
+			loadMore()
+		}
+	})
+
+	function formatDate(d: Date): string {
+		const year = d.getFullYear()
+		const month = String(d.getMonth() + 1).padStart(2, '0')
+		const day = String(d.getDate()).padStart(2, '0')
+		return `${year}-${month}-${day}`
+	}
+
+	function formatTime(t: string): string {
+		if (!t) return ''
+		const d = new Date(t.replace(/-/g, '/') + ' GMT+8')
+		const year = d.getFullYear()
+		const month = String(d.getMonth() + 1).padStart(2, '0')
+		const day = String(d.getDate()).padStart(2, '0')
+		const hour = String(d.getHours()).padStart(2, '0')
+		const min = String(d.getMinutes()).padStart(2, '0')
+		return `${year}-${month}-${day} ${hour}:${min}`
+	}
+
+	function formatMoney(v: number): string {
+		const n = (v as number) || 0
+		if (n >= 10000) return (n / 10000).toFixed(2) + '万'
+		return n.toFixed(2)
+	}
+
+	function loadRecords() {
+		loading.value = true
+		page.value = 1
+		
+		const params: any = {
+			page: page.value,
+			per_page: pageSize
+		}
+		if (startDate.value) {
+			params.start_date = startDate.value
+		}
+		if (endDate.value) {
+			params.end_date = endDate.value
+		}
+
+		get('/commission-records', params).then((res: any) => {
+			loading.value = false
+			if (res.code === 200 && res.data) {
+				const data = res.data
+				recordList.value = data.data || []
+				total.value = data.total || 0
+				totalAmount.value = data.total_amount ? formatMoney(data.total_amount) : '0.00'
+				hasMore.value = recordList.value.length < total.value
+			} else {
+				recordList.value = []
+				total.value = 0
+				totalAmount.value = '0.00'
+				hasMore.value = false
+			}
+		}).catch((_e: any) => {
+			loading.value = false
+			recordList.value = []
+			hasMore.value = false
+			uni.showToast({ title: '加载失败', icon: 'none' })
+		})
+	}
+
+	function loadMore() {
+		if (loading.value || !hasMore.value) return
+		
+		loading.value = true
+		page.value++
+		
+		const params: any = {
+			page: page.value,
+			per_page: pageSize
+		}
+		if (startDate.value) {
+			params.start_date = startDate.value
+		}
+		if (endDate.value) {
+			params.end_date = endDate.value
+		}
+
+		get('/commission-records', params).then((res: any) => {
+			loading.value = false
+			if (res.code === 200 && res.data) {
+				const data = res.data
+				const newList = data.data || []
+				recordList.value = recordList.value.concat(newList)
+				hasMore.value = recordList.value.length < (data.total || 0)
+			}
+		}).catch((_e: any) => {
+			loading.value = false
+			page.value--
+		})
+	}
+
+	function onSearch() {
+		loadRecords()
+	}
+
+	// 日期选择器事件
+	function onStartDateChange(e: any) {
+		startDateValue.value = e.detail.value
+	}
+
+	function onEndDateChange(e: any) {
+		endDateValue.value = e.detail.value
+	}
+
+	function confirmStartDate() {
+		const year = years[startDateValue.value[0]]
+		const month = months[startDateValue.value[1]]
+		const day = days[startDateValue.value[2]]
+		startDate.value = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+		showStartDatePicker.value = false
+	}
+
+	function confirmEndDate() {
+		const year = years[endDateValue.value[0]]
+		const month = months[endDateValue.value[1]]
+		const day = days[endDateValue.value[2]]
+		endDate.value = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+		showEndDatePicker.value = false
+	}
+</script>
+
+<style scoped>
+	.page {
+		min-height: 100vh;
+		background-color: #FFF9F0;
+	}
+
+	/* 顶部渐变背景 */
+	.header-bg {
+		background: linear-gradient(180deg, #F5C76B 0%, #FFF9F0 100%);
+		padding: 80rpx 36rpx 40rpx;
+	}
+
+	.header-content {
+		flex-direction: column;
+		align-items: center;
+	}
+
+	.page-title {
+		font-size: 36rpx;
+		color: #333333;
+		font-weight: 700;
+	}
+
+	/* 筛选卡片 */
+	.filter-card {
+		margin: -20rpx 24rpx 24rpx;
+		background: #FFFFFF;
+		border-radius: 16rpx;
+		padding: 24rpx;
+		box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.05);
+	}
+
+	.filter-row {
+		flex-direction: row;
+		align-items: center;
+		justify-content: space-between;
+	}
+
+	.filter-item {
+		flex: 1;
+		flex-direction: column;
+		align-items: center;
+	}
+
+	.filter-label {
+		font-size: 22rpx;
+		color: #999999;
+		margin-bottom: 8rpx;
+	}
+
+	.filter-value {
+		font-size: 26rpx;
+		color: #333333;
+		font-weight: 500;
+	}
+
+	.filter-value.placeholder {
+		color: #CCCCCC;
+	}
+
+	.filter-separator {
+		font-size: 24rpx;
+		color: #999999;
+		margin: 0 16rpx;
+	}
+
+	.filter-btn {
+		background: linear-gradient(135deg, #F5C76B 0%, #E8A838 100%);
+		padding: 16rpx 32rpx;
+		border-radius: 30rpx;
+		margin-left: 20rpx;
+	}
+
+	.filter-btn-text {
+		font-size: 24rpx;
+		color: #FFFFFF;
+		font-weight: 600;
+	}
+
+	/* 统计卡片 */
+	.stats-card {
+		margin: 0 24rpx 24rpx;
+		background: #FFFFFF;
+		border-radius: 16rpx;
+		padding: 32rpx;
+		flex-direction: row;
+		align-items: center;
+		justify-content: space-around;
+		box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.05);
+	}
+
+	.stats-item {
+		flex-direction: column;
+		align-items: center;
+	}
+
+	.stats-label {
+		font-size: 24rpx;
+		color: #999999;
+		margin-bottom: 12rpx;
+	}
+
+	.stats-value {
+		font-size: 40rpx;
+		color: #333333;
+		font-weight: 700;
+	}
+
+	.stats-value.highlight {
+		color: #E8A838;
+	}
+
+	.stats-divider {
+		width: 2rpx;
+		height: 60rpx;
+		background: #EEEEEE;
+	}
+
+	/* 列表卡片 */
+	.list-card {
+		margin: 0 24rpx 24rpx;
+		background: #FFFFFF;
+		border-radius: 16rpx;
+		padding: 24rpx;
+		box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.05);
+	}
+
+	.empty-state {
+		padding: 80rpx 0;
+		flex-direction: column;
+		align-items: center;
+	}
+
+	.empty-icon {
+		font-size: 80rpx;
+		margin-bottom: 20rpx;
+	}
+
+	.empty-text {
+		font-size: 28rpx;
+		color: #999999;
+	}
+
+	.record-item {
+		flex-direction: row;
+		align-items: center;
+		justify-content: space-between;
+		padding: 24rpx 0;
+		border-bottom: 1rpx solid #F5F5F5;
+	}
+
+	.record-item:last-child {
+		border-bottom: none;
+	}
+
+	.record-left {
+		flex-direction: row;
+		align-items: center;
+		flex: 1;
+	}
+
+	.record-icon {
+		width: 72rpx;
+		height: 72rpx;
+		border-radius: 36rpx;
+		background: linear-gradient(135deg, #F5C76B 0%, #E8A838 100%);
+		justify-content: center;
+		align-items: center;
+		margin-right: 20rpx;
+	}
+
+	.icon-text {
+		font-size: 28rpx;
+		color: #FFFFFF;
+		font-weight: 700;
+	}
+
+	.record-info {
+		flex-direction: column;
+		flex: 1;
+	}
+
+	.record-type {
+		font-size: 28rpx;
+		color: #333333;
+		font-weight: 600;
+		margin-bottom: 8rpx;
+	}
+
+	.record-desc {
+		font-size: 24rpx;
+		color: #999999;
+		margin-bottom: 8rpx;
+	}
+
+	.record-time {
+		font-size: 22rpx;
+		color: #CCCCCC;
+	}
+
+	.record-amount {
+		font-size: 32rpx;
+		color: #E8A838;
+		font-weight: 700;
+	}
+
+	/* 加载更多 */
+	.loading-more,
+	.load-more,
+	.no-more {
+		padding: 32rpx 0;
+		align-items: center;
+	}
+
+	.loading-text,
+	.load-more-text,
+	.no-more-text {
+		font-size: 24rpx;
+		color: #999999;
+	}
+
+	.load-more-text {
+		color: #E8A838;
+	}
+
+	/* 日期选择器 */
+	.picker-mask {
+		position: fixed;
+		left: 0;
+		top: 0;
+		right: 0;
+		bottom: 0;
+		background: rgba(0, 0, 0, 0.5);
+		justify-content: flex-end;
+	}
+
+	.picker-content {
+		background: #FFFFFF;
+		border-radius: 24rpx 24rpx 0 0;
+	}
+
+	.picker-header {
+		flex-direction: row;
+		align-items: center;
+		justify-content: space-between;
+		padding: 24rpx 32rpx;
+		border-bottom: 1rpx solid #EEEEEE;
+	}
+
+	.picker-title {
+		font-size: 32rpx;
+		color: #333333;
+		font-weight: 600;
+	}
+
+	.picker-close {
+		font-size: 32rpx;
+		color: #999999;
+		padding: 8rpx;
+	}
+
+	.picker-view {
+		height: 400rpx;
+	}
+
+	.picker-item {
+		line-height: 80rpx;
+		text-align: center;
+		font-size: 28rpx;
+		color: #333333;
+	}
+
+	.picker-footer {
+		padding: 24rpx 32rpx;
+		border-top: 1rpx solid #EEEEEE;
+		align-items: center;
+	}
+
+	.picker-confirm {
+		background: linear-gradient(135deg, #F5C76B 0%, #E8A838 100%);
+		padding: 24rpx 80rpx;
+		border-radius: 40rpx;
+		font-size: 30rpx;
+		color: #FFFFFF;
+		font-weight: 600;
+	}
+</style>

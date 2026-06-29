@@ -1,0 +1,718 @@
+﻿<template>
+	<view class="container">
+		<!-- 业绩汇总卡片 -->
+		<view class="summary-card">
+			<text class="section-title">业绩汇总</text>
+			<view class="summary-grid">
+				<view class="summary-item">
+					<text class="summary-label">今日收益(元)</text>
+					<text class="summary-value">{{ summary.todayIncome }}</text>
+				</view>
+				<view class="summary-item">
+					<text class="summary-label">今日个人业绩(元)</text>
+					<text class="summary-value">{{ summary.todayPersonal }}</text>
+				</view>
+				<view class="summary-item">
+					<text class="summary-label">今日团队业绩(元)</text>
+					<text class="summary-value">{{ summary.todayTeam }}</text>
+				</view>
+				<view class="summary-item">
+					<text class="summary-label">总收益(元)</text>
+					<text class="summary-value">{{ summary.totalIncome }}</text>
+				</view>
+				<view class="summary-item">
+					<text class="summary-label">团队总主播(人)</text>
+					<text class="summary-value">{{ summary.teamAnchors }}</text>
+				</view>
+				<view class="summary-item">
+					<text class="summary-label">团队总业绩(元)</text>
+					<text class="summary-value">{{ summary.totalTeamPerformance }}</text>
+				</view>
+			</view>
+		</view>
+
+		<!-- 平台切换栏 -->
+		<view class="platform-bar">
+			<image class="platform-logo" :src="currentPlatform.logo" mode="aspectFit" />
+			<view class="platform-info">
+				<text class="platform-name">{{ currentPlatform.name }}</text>
+				<text class="platform-level" v-if="currentPlatform.level !== ''">LV{{ currentPlatform.level }}</text>
+			</view>
+			<view class="switch-btn" @click="showPlatformPicker = true">
+				<text class="switch-text">切换平台</text>
+			</view>
+		</view>
+
+		<!-- 平台佣金比例 -->
+		<view class="commission-card">
+			<text class="commission-title">平台佣金比例</text>
+			<view class="commission-row">
+				<text class="commission-item">直推 <text
+						class="commission-value">{{ currentPlatform.directRate }}%</text></text>
+				<text class="commission-item">平级 <text
+						class="commission-value">{{ currentPlatform.sameLevelRate }}%</text></text>
+			</view>
+		</view>
+
+		<!-- 当前平台数据 -->
+		<!-- <view class="platform-data-card">
+			<view class="data-grid">
+				<view class="data-item">
+					<text class="data-label">今日收益(元)</text>
+					<text class="data-value">{{ currentPlatform.todayIncome }}</text>
+				</view>
+				<view class="data-item">
+					<text class="data-label">今日个人业绩(元)</text>
+					<text class="data-value">{{ currentPlatform.todayPersonal }}</text>
+				</view>
+				<view class="data-item">
+					<text class="data-label">今日团队业绩(元)</text>
+					<text class="data-value">{{ currentPlatform.todayTeam }}</text>
+				</view>
+			</view>
+			<view class="data-divider"></view>
+			<view class="data-grid">
+				<view class="data-item">
+					<text class="data-label">总收益(元)</text>
+					<text class="data-value">{{ currentPlatform.totalIncome }}</text>
+				</view>
+				<view class="data-item">
+					<text class="data-label">我团队总主播(人)</text>
+					<text class="data-value">{{ currentPlatform.myTeamAnchors }}</text>
+				</view>
+				<view class="data-item">
+					<text class="data-label">我团队总业绩(元)</text>
+					<text class="data-value">{{ currentPlatform.myTeamTotalPerformance }}</text>
+				</view>
+			</view>
+		</view> -->
+
+		<!-- Tab 切换 -->
+		<view class="tab-section">
+			<view v-for="(tab, index) in tabs" :key="index" class="tab-item"
+				:class="{ 'tab-active': currentTab === index }" @click="currentTab = index">
+				<text class="tab-text" :class="{ 'tab-text-active': currentTab === index }">{{ tab }}</text>
+			</view>
+		</view>
+
+		<!-- 主播/代理列表 -->
+		<view class="list-container">
+			<!-- 我的主播业绩 -->
+			<template v-if="currentTab === 0">
+				<view v-for="(anchor, index) in currentPlatform.anchors" :key="index" class="anchor-card">
+					<view class="anchor-header">
+						<image class="anchor-avatar" :src="anchor.avatar" mode="aspectFill" />
+						<view class="anchor-info">
+							<text class="anchor-name">{{ anchor.name }}</text>
+							<text class="anchor-id">ID：{{ anchor.id }}</text>
+						</view>
+					</view>
+					<view class="anchor-stats">
+						<view class="anchor-stat-item">
+							<text class="stat-label">今日个人业绩(元)</text>
+							<text class="stat-value">{{ anchor.todayPerformance }}</text>
+						</view>
+						<view class="anchor-stat-item">
+							<text class="stat-label">个人总业绩(元)</text>
+							<text class="stat-value">{{ anchor.totalPerformance }}</text>
+						</view>
+					</view>
+				</view>
+</template>
+
+			<!-- 直推代理业绩 -->
+			<template v-else-if="currentTab === 1">
+				<view v-for="(agent, index) in currentPlatform.agents" :key="index" class="agent-card">
+					<view class="agent-header">
+						<image class="agent-avatar" :src="agent.avatar" mode="aspectFill" />
+						<view class="agent-info">
+							<text class="agent-name">{{ agent.name }}</text>
+							<text class="agent-id">ID：{{ agent.id }}</text>
+						</view>
+					</view>
+					<view class="agent-stats">
+						<view class="agent-stat-item">
+							<text class="stat-label">今日业绩(元)</text>
+							<text class="stat-value">{{ agent.todayPerformance }}</text>
+						</view>
+						<view class="agent-stat-item">
+							<text class="stat-label">总业绩(元)</text>
+							<text class="stat-value">{{ agent.totalPerformance }}</text>
+						</view>
+					</view>
+				</view>
+</template>
+
+			<!-- 空状态 -->
+			<view v-if="getShowEmpty()" class="empty-state">
+				<text class="empty-text">暂无数据</text>
+			</view>
+		</view>
+
+		<!-- 切换平台弹窗 -->
+		<view v-if="showPlatformPicker" class="popup-mask" @click="showPlatformPicker = false">
+			<view class="popup-content" @click.stop>
+				<view class="popup-header">
+					<text class="popup-cancel" @click="showPlatformPicker = false">取消</text>
+					<text class="popup-title">切换平台</text>
+					<text class="popup-close" @click="showPlatformPicker = false">✕</text>
+				</view>
+				<scroll-view class="popup-list" scroll-y>
+					<view v-for="(platform, index) in platforms" :key="index" class="popup-item"
+						@click="selectPlatform(index)">
+						<image class="popup-item-logo" :src="platform.logo" mode="aspectFit" />
+						<text class="popup-item-name">{{ platform.name }}</text>
+					</view>
+				</scroll-view>
+			</view>
+		</view>
+	</view>
+</template>
+
+<script setup lang="uts">
+import { onShow } from "@dcloudio/uni-app";
+	import { checkLogin } from "@/utils/auth.uts";
+	import {
+		getSummaryStatsApi,
+		getPerformanceStatsApi,
+		getCommissionApi,
+		getLevelApi,
+		getAnchorsApi,
+		getUsersApi,
+		type SummaryStats,
+		type PlatformItem,
+		type AnchorItem as ApiAnchorItem,
+		type UserItem as ApiUserItem
+	} from "@/utils/api.uts"
+	import { getPlatformsApi } from "@/utils/api.uts"
+
+	// 页面显示时检查登录状态并加载数据
+	onShow(() => {
+		checkLogin()
+		loadAllData()
+	})
+
+	// ========== 业绩汇总 ==========
+	const summary = ref({
+		todayIncome: '0',
+		todayPersonal: '0',
+		todayTeam: '0',
+		totalIncome: '0',
+		teamAnchors: '0',
+		totalTeamPerformance: '0'
+	})
+
+	const loadSummaryStats = () => {
+		getSummaryStatsApi().then((data : SummaryStats) => {
+			summary.value = {
+				todayIncome: data.todayIncome.toFixed(4).replace(/\.?0+$/, ''),
+				todayPersonal: data.todayPersonal.toFixed(2),
+				todayTeam: data.todayTeam.toFixed(2),
+				totalIncome: data.totalIncome.toFixed(4).replace(/\.?0+$/, ''),
+				teamAnchors: String(data.teamAnchorCount),
+				totalTeamPerformance: data.totalTeam.toFixed(4).replace(/\.?0+$/, '')
+			}
+		}).catch((_err : any) => { })
+	}
+
+	// ========== 平台数据接口 ==========
+	interface AnchorPerfItem {
+		name : string
+		id : string
+		avatar : string
+		todayPerformance : string
+		totalPerformance : string
+	}
+
+	interface AgentPerfItem {
+		name : string
+		id : string
+		avatar : string
+		todayPerformance : string
+		totalPerformance : string
+	}
+
+	interface PlatformData {
+		id : number
+		name : string
+		logo : string
+		level : string
+		directRate : number
+		sameLevelRate : number
+		anchors : AnchorPerfItem[]
+		agents : AgentPerfItem[]
+	}
+
+	const platforms = ref<PlatformData[]>([])
+	const currentPlatform = ref<PlatformData>({
+		id: 0,
+		name: '',
+		logo: '',
+		level: '',
+		directRate: 0,
+		sameLevelRate: 0,
+		anchors: [],
+		agents: []
+	})
+	const showPlatformPicker = ref<boolean>(false)
+
+	// Tab
+	const tabs = ref<string[]>(['我的主播业绩', '间推代理业绩'])
+	const currentTab = ref<number>(0)
+
+	// ========== 加载所有数据 ==========
+	const loadAllData = () => {
+		loadSummaryStats()
+		loadPlatforms()
+	}
+
+	// 加载平台列表
+	const loadPlatforms = () => {
+		getPlatformsApi().then((list : PlatformItem[]) => {
+			if (list.length === 0) return
+			const mapped = list.map((p) : PlatformData => ({
+				id: p.id,
+				name: p.platformName,
+				logo: p.platformImg || '/static/userinfo.png',
+				level: '',
+				directRate: 0,
+				sameLevelRate: 0,
+				anchors: [],
+				agents: []
+			}))
+			platforms.value = mapped
+			// 默认选中第一个，加载其数据
+			selectPlatformData(0)
+		}).catch((_err : any) => { })
+	}
+
+	// 选择平台并加载数据
+	const selectPlatformData = (index : number) : void => {
+		if (platforms.value.length === 0) return
+		currentPlatform.value = { ...platforms.value[index] }
+		const platformId = platforms.value[index].id
+
+		// 并行请求：统计、佣金、等级、主播列表
+		Promise.all([
+			getPerformanceStatsApi(platformId),
+			getCommissionApi(platformId),
+			getLevelApi(platformId),
+			getAnchorsApi({ platformId, page: 1, page_size: 50 })
+		]).then(([stats, commission, level, anchorResult]) : void => {
+			const idx = platforms.value.findIndex((p : PlatformData) => p.id === platformId)
+			if (idx >= 0) {
+				platforms.value[idx].directRate = commission.directRate
+				platforms.value[idx].sameLevelRate = commission.peerRate
+				platforms.value[idx].level = String(level.level)
+
+				// 映射主播列表
+				platforms.value[idx].anchors = anchorResult.list.map((a : ApiAnchorItem) : AnchorPerfItem => ({
+					name: a.nickname,
+					id: a.anchorId,
+					avatar: a.userImg || '/static/userinfo.png',
+					todayPerformance: String(a.todayRevenue ?? '0'),
+					totalPerformance: String(a.totalRevenue ?? '0')
+				}))
+
+				currentPlatform.value = { ...platforms.value[idx] }
+			}
+		}).catch((_err : any) => { })
+
+		// 加载代理列表（role=1 是间推代理）
+		loadAgents(platformId)
+	}
+
+	// 加载间推代理列表
+	const loadAgents = (platformId : number) => {
+		getUsersApi({ role: 1, page: 1, pageSize: 50 }).then((result) => {
+			const idx = platforms.value.findIndex((p : PlatformData) => p.id === platformId)
+			if (idx >= 0) {
+				platforms.value[idx].agents = result.list.map((u : ApiUserItem) : AgentPerfItem => ({
+					name: u.nickname,
+					id: String(u.id),
+					avatar: u.avatar || '/static/userinfo.png',
+					todayPerformance: u.agentCommission || '0.00',
+					totalPerformance: u.totalRecharge || '0.00'
+				}))
+				currentPlatform.value = { ...platforms.value[idx] }
+			}
+		}).catch((_err : any) => { })
+	}
+
+	// 选择平台（弹窗点击）
+	const selectPlatform = (index : number) : void => {
+		showPlatformPicker.value = false
+		currentTab.value = 0
+		selectPlatformData(index)
+	}
+
+	// 是否显示空状态
+	const getShowEmpty = () : boolean => {
+		if (currentTab.value === 0) {
+			return currentPlatform.value.anchors.length === 0
+		} else if (currentTab.value === 1) {
+			return currentPlatform.value.agents.length === 0
+		}
+		return true
+	}
+</script>
+
+<style>
+	page {
+		background-color: #F5F0E8;
+	}
+
+	.container {
+		background-color: #F5F0E8;
+		overflow-y: auto;
+	}
+
+	/* 业绩汇总 */
+	.summary-card {
+		margin: 20rpx 24rpx;
+		background: linear-gradient(135deg, #F5DCA0 0%, #F0C275 100%);
+		border-radius: 16rpx;
+		padding: 28rpx 24rpx;
+		box-shadow: 0 4rpx 12rpx rgba(240, 194, 117, 0.25);
+	}
+
+	.section-title {
+		font-size: 28rpx;
+		color: #7A5C18;
+		font-weight: 500;
+		margin-bottom: 20rpx;
+	}
+
+	.summary-grid {
+		flex-direction: row;
+		flex-wrap: wrap;
+	}
+
+	.summary-item {
+		width: 33.3%;
+		margin-bottom: 24rpx;
+		display: flex;
+		flex-direction: column;
+		align-items: flex-start;
+		padding-right: 10rpx;
+	}
+
+	.summary-label {
+		font-size: 22rpx;
+		color: #7A5C18;
+		margin-bottom: 8rpx;
+	}
+
+	.summary-value {
+		font-size: 30rpx;
+		color: #4A3B1A;
+		font-weight: bold;
+	}
+
+	/* 平台切换栏 */
+	.platform-bar {
+		flex-direction: row;
+		align-items: center;
+		background-color: #FFFFFF;
+		border-radius: 16rpx;
+		padding: 20rpx 24rpx;
+		margin: 0 24rpx 16rpx 24rpx;
+		box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.03);
+	}
+
+	.platform-logo {
+		width: 72rpx;
+		height: 72rpx;
+		border-radius: 14rpx;
+		margin-right: 18rpx;
+	}
+
+	.platform-info {
+		flex: 1;
+	}
+
+	.platform-name {
+		font-size: 30rpx;
+		color: #333333;
+		font-weight: 600;
+	}
+
+	.platform-level {
+		font-size: 22rpx;
+		color: #FFFFFF;
+		background-color: #FF6B35;
+		padding: 2rpx 14rpx;
+		border-radius: 8rpx;
+		/* margin-left: 10rpx; */
+		border-radius: 15rpx;
+		margin-top: 5rpx;
+		width: 80rpx;
+	}
+
+	.switch-btn {
+		background-color: #F0C275;
+		border-radius: 28rpx;
+		padding: 12rpx 28rpx;
+	}
+
+	.switch-text {
+		font-size: 26rpx;
+		color: #FFFFFF;
+		font-weight: 500;
+	}
+
+	/* 佣金比例 */
+	.commission-card {
+		margin: 0 24rpx 16rpx 24rpx;
+		background: linear-gradient(135deg, #F5DCA0 0%, #F0C275 100%);
+		background-image: url('/static/yj-bg-DISGW2KN.png');
+		background-size: cover;
+		background-repeat: no-repeat;
+		background-position: center center;
+		border-radius: 16rpx;
+		padding: 24rpx 28rpx;
+	}
+
+	.commission-title {
+		font-size: 30rpx;
+		color: #4A3B1A;
+		font-weight: 600;
+		margin-bottom: 16rpx;
+	}
+
+	.commission-row {
+		flex-direction: row;
+	}
+
+	.commission-item {
+		font-size: 26rpx;
+		color: #4A3B1A;
+		margin-right: 40rpx;
+	}
+
+	.commission-value {
+		font-weight: 600;
+		font-size: 28rpx;
+	}
+
+	/* 平台数据卡片 */
+	.platform-data-card {
+		margin: 0 24rpx 16rpx 24rpx;
+		background: linear-gradient(135deg, #D4EDDA 0%, #C3E6CB 100%);
+		border-radius: 16rpx;
+		padding: 28rpx 24rpx;
+	}
+
+	.data-grid {
+		flex-direction: row;
+	}
+
+	.data-grid+.data-grid {
+		margin-top: 24rpx;
+	}
+
+	.data-item {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		align-items: flex-start;
+	}
+
+	.data-label {
+		font-size: 22rpx;
+		color: #5A7A52;
+		margin-bottom: 8rpx;
+	}
+
+	.data-value {
+		font-size: 30rpx;
+		color: #2E5A36;
+		font-weight: bold;
+	}
+
+	.data-divider {
+		height: 1rpx;
+		background-color: rgba(255, 255, 255, 0.5);
+		margin: 20rpx 0;
+	}
+
+	/* Tab */
+	.tab-section {
+		flex-direction: row;
+		padding: 20rpx 80rpx 16rpx 80rpx;
+	}
+
+	.tab-item {
+		flex: 1;
+		align-items: center;
+		padding-bottom: 14rpx;
+		border-bottom-width: 4rpx;
+		border-bottom-style: solid;
+		border-bottom-color: transparent;
+	}
+
+	.tab-active {
+		border-bottom-color: #F0C275;
+	}
+
+	.tab-text {
+		font-size: 28rpx;
+		color: #999999;
+	}
+
+	.tab-text-active {
+		color: #333333;
+		font-weight: 600;
+	}
+
+	/* 列表 */
+	.list-container {
+		padding: 0 24rpx 30rpx 24rpx;
+	}
+
+	.anchor-card,
+	.agent-card {
+		background-color: #FFFFFF;
+		border-radius: 16rpx;
+		padding: 28rpx 24rpx;
+		margin-bottom: 16rpx;
+		box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.03);
+	}
+
+	.anchor-header,
+	.agent-header {
+		flex-direction: row;
+		align-items: center;
+		margin-bottom: 20rpx;
+	}
+
+	.anchor-avatar,
+	.agent-avatar {
+		width: 72rpx;
+		height: 72rpx;
+		border-radius: 36rpx;
+		margin-right: 18rpx;
+	}
+
+	.anchor-info,
+	.agent-info {
+		flex: 1;
+	}
+
+	.anchor-name,
+	.agent-name {
+		font-size: 28rpx;
+		color: #333333;
+		font-weight: 500;
+	}
+
+	.anchor-id,
+	.agent-id {
+		font-size: 24rpx;
+		color: #F0C275;
+		background-color: #FFF6E0;
+		padding: 2rpx 12rpx;
+		border-radius: 8rpx;
+		margin-top: 4rpx;
+		display: inline-block;
+		width: fit-content;
+	}
+
+	.anchor-stats,
+	.agent-stats {
+		flex-direction: row;
+	}
+
+	.anchor-stat-item,
+	.agent-stat-item {
+		flex: 1;
+	}
+
+	.stat-label {
+		font-size: 24rpx;
+		color: #999999;
+	}
+
+	.stat-value {
+		font-size: 28rpx;
+		color: #333333;
+		font-weight: 500;
+		margin-top: 4rpx;
+	}
+
+	/* 空状态 */
+	.empty-state {
+		padding: 120rpx 0;
+		align-items: center;
+	}
+
+	.empty-text {
+		font-size: 28rpx;
+		color: #CCCCCC;
+	}
+
+	/* 弹窗 */
+	.popup-mask {
+		position: fixed;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		background-color: rgba(0, 0, 0, 0.5);
+		z-index: 999;
+		justify-content: flex-end;
+	}
+
+	.popup-content {
+		background-color: #FFFFFF;
+		border-radius: 24rpx 24rpx 0 0;
+		max-height: 70vh;
+	}
+
+	.popup-header {
+		flex-direction: row;
+		align-items: center;
+		justify-content: space-between;
+		padding: 28rpx 30rpx;
+		border-bottom: 1rpx solid #F0EDE6;
+	}
+
+	.popup-cancel {
+		font-size: 28rpx;
+		color: #F0C275;
+	}
+
+	.popup-title {
+		font-size: 32rpx;
+		color: #333333;
+		font-weight: 600;
+	}
+
+	.popup-close {
+		font-size: 32rpx;
+		color: #999999;
+	}
+
+	.popup-list {
+		max-height: 60vh;
+	}
+
+	.popup-item {
+		flex-direction: row;
+		align-items: center;
+		padding: 26rpx 30rpx;
+		border-bottom: 1rpx solid #F5F0E8;
+	}
+
+	.popup-item-logo {
+		width: 64rpx;
+		height: 64rpx;
+		border-radius: 12rpx;
+		margin-right: 20rpx;
+	}
+
+	.popup-item-name {
+		font-size: 30rpx;
+		color: #333333;
+	}
+</style>

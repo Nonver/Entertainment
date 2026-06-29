@@ -1,0 +1,66 @@
+<template>
+	<view class="custom-tab-bar">
+		<view v-for="(item, index) in list" :key="index" class="tab-item" @click="switchTab(item.pagePath)">
+			<image :src="item.iconPath" class="tab-icon" mode="aspectFit" />
+			<text :class="['tab-label', active === item.pagePath ? 'active' : '']">{{ item.text }}</text>
+		</view>
+	</view>
+</template>
+
+<script setup>
+const props = defineProps({
+	active: {
+		type: String,
+		default: ''
+	}
+})
+
+const list = [
+	{ pagePath: 'pages/news/news', iconPath: '/static/xw.png', text: '新闻资讯' },
+	{ pagePath: 'pages/index/index', iconPath: '/static/index.png', text: '首页' },
+	{ pagePath: 'pages/performance/performance', iconPath: '/static/td.png', text: '平台业绩' },
+	{ pagePath: 'pages/service-tab/service-tab', iconPath: '/static/kf.png', text: '客服接待' },
+	{ pagePath: 'pages/mine/mine', iconPath: '/static/info.png', text: '个人中心' }
+]
+
+function switchTab(path) {
+	uni.switchTab({
+		url: '/' + path
+	})
+}
+</script>
+
+<style scoped>
+.custom-tab-bar {
+	position: fixed;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	height: 100rpx;
+	padding-bottom: env(safe-area-inset-bottom);
+	background-color: #FFFFFF;
+	flex-direction: row;
+	align-items: center;
+	justify-content: space-around;
+	border-top: 1rpx solid #E0E0E0;
+	z-index: 999;
+}
+.tab-item {
+	flex: 1;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+}
+.tab-icon {
+	width: 50rpx;
+	height: 50rpx;
+}
+.tab-label {
+	font-size: 22rpx;
+	color: #999999;
+	margin-top: 6rpx;
+}
+.active {
+	color: #FF4D4F;
+}
+</style>

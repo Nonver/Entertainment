@@ -1,0 +1,214 @@
+<template>
+	<view class="container">
+		<!-- 导航栏 -->
+		<view class="nav-bar">
+			<view class="back-btn" @click="goBack">
+				<image class="menu-arrow-icon" src="/static/svg/jt.png" mode="aspectFit" style="transform: rotate(180deg);" />
+			</view>
+			<text class="nav-title">违规公示</text>
+			<view class="nav-placeholder"></view>
+		</view>
+
+		<!-- 内容区 -->
+		<view class="content-area">
+			<view class="rule-card">
+				<text class="rule-text">护航网络安全，打击违法违规行为</text>
+				<text class="rule-text">为积极落实互联网违法违规行为，本机构会严厉打击违法违规行为，刻不容缓，绝不仅说不做，机构有权且加大对各邀请人进行处罚力度，本机构会秉承合法绿色、健康经营宗旨，维护清朗的社交环境！</text>
+			</view>
+
+			<!-- 违规记录列表 -->
+			<!-- <view class="record-list">
+				<view v-for="(item, index) in recordList" :key="index" class="record-card">
+					<view class="record-header">
+						<text class="record-type">{{ item.type }}</text>
+						<text class="record-time">{{ item.time }}</text>
+					</view>
+					<view class="record-body">
+						<text class="record-desc">{{ item.description }}</text>
+						<view class="record-info">
+							<text class="info-label">违规人员：</text>
+							<text class="info-value">{{ item.person }}</text>
+						</view>
+						<view class="record-info">
+							<text class="info-label">处理结果：</text>
+							<text class="info-value result">{{ item.result }}</text>
+						</view>
+					</view>
+				</view>
+			</view> -->
+		</view>
+	</view>
+</template>
+
+<script setup lang="uts">
+	const recordList = ref<Array<{
+		type: string
+		time: string
+		description: string
+		person: string
+		result: string
+	}>>([
+		{
+			type: '严重警告',
+			time: '2026-05-30',
+			description: '多次诱导用户进行线下交易，违反平台陪聊公约第3条',
+			person: '主播 小雨 (ID: 855201)',
+			result: '冻结账户7天 + 扣除当月佣金50%'
+		},
+		{
+			type: '永久封禁',
+			time: '2026-05-28',
+			description: '利用平台进行诈骗活动，涉及金额较大',
+			person: '代理 王某 (ID: 100012)',
+			result: '永久封禁账户 + 移交司法机关处理'
+		},
+		{
+			type: '警告',
+			time: '2026-05-25',
+			description: '发布不当言论，影响平台形象',
+			person: '主播 阿花 (ID: 861226)',
+			result: '警告一次 + 扣除当日业绩佣金'
+		},
+		{
+			type: '严重警告',
+			time: '2026-05-20',
+			description: '恶意刷单、虚假业绩',
+			person: '代理 李某 (ID: 100008)',
+			result: '冻结账户15天 + 清空本月业绩'
+		}
+	])
+
+	// 返回
+	const goBack = () : void => {
+		const pages = getCurrentPages()
+		if (pages.length > 1) {
+			uni.navigateBack()
+		} else {
+			uni.reLaunch({ url: '/pages/mine/mine' })
+		}
+	}
+</script>
+
+<style>
+	.container {
+		background-color: #F5F0E8;
+		min-height: 100vh;
+	}
+
+	.menu-arrow-icon {
+		width: 28rpx;
+		height: 28rpx;
+	}
+
+	/* 导航栏 */
+	.nav-bar {
+		flex-direction: row;
+		align-items: center;
+		justify-content: space-between;
+		padding: 56rpx 24rpx 16rpx 24rpx;
+		background-color: #FFFFFF;
+	}
+
+	.back-btn {
+		width: 70rpx;
+		height: 70rpx;
+		justify-content: center;
+		align-items: center;
+	}
+
+	.nav-title {
+		font-size: 34rpx;
+		color: #333333;
+		font-weight: 600;
+	}
+
+	.nav-placeholder {
+		width: 70rpx;
+	}
+
+	/* 内容区 */
+	.content-area {
+		padding: 24rpx;
+	}
+
+	.rule-card {
+		background-color: #FFFFFF;
+		border-radius: 16rpx;
+		padding: 28rpx 24rpx;
+		margin-bottom: 24rpx;
+	}
+
+	.rule-text {
+		font-size: 28rpx;
+		color: #333333;
+		line-height: 48rpx;
+		display: block;
+		margin-bottom: 12rpx;
+	}
+
+	/* 记录列表 */
+	.record-list {
+		padding-bottom: 40rpx;
+	}
+
+	.record-card {
+		background-color: #FFFFFF;
+		border-radius: 16rpx;
+		padding: 24rpx;
+		margin-bottom: 20rpx;
+		border-left: 8rpx solid #E74C3C;
+	}
+
+	.record-header {
+		flex-direction: row;
+		align-items: center;
+		justify-content: space-between;
+		margin-bottom: 14rpx;
+	}
+
+	.record-type {
+		font-size: 26rpx;
+		color: #E74C3C;
+		font-weight: 600;
+		background-color: #FDECEA;
+		padding: 4rpx 16rpx;
+		border-radius: 6rpx;
+	}
+
+	.record-time {
+		font-size: 24rpx;
+		color: #999999;
+	}
+
+	.record-body {
+		padding-top: 10rpx;
+	}
+
+	.record-desc {
+		font-size: 26rpx;
+		color: #333333;
+		line-height: 42rpx;
+		display: block;
+		margin-bottom: 12rpx;
+	}
+
+	.record-info {
+		flex-direction: row;
+		margin-bottom: 6rpx;
+	}
+
+	.info-label {
+		font-size: 24rpx;
+		color: #999999;
+	}
+
+	.info-value {
+		font-size: 24rpx;
+		color: #666666;
+	}
+
+	.info-value.result {
+		color: #E74C3C;
+		font-weight: 500;
+	}
+</style>

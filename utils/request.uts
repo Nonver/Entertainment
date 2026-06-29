@@ -1,0 +1,161 @@
+/**
+ * HTTP 请求工具
+ * 使用 UTS 原生网络请求模块（uni-app x / uni-app x 兼容）
+ */
+
+import { getToken, clearToken } from "@/utils/auth.uts"
+
+// API 基础地址（根据环境切换）
+// const BASE_URL = 'http://localhost:8000/api/admin'
+
+const BASE_URL = 'http://192.168.0.26:8000/api/admin'
+// const BASE_URL = '//api.gxjujing.com/api/admin'
+
+
+// 请求配置类型
+type RequestConfig = {
+	url: string
+	method?: string
+	data?: any
+	header?: Record<string, string>
+	showLoading?: boolean
+}
+
+// 响应数据类型
+type ResponseData<T> = {
+	code: number
+	message: string
+	data: T
+}
+
+/**
+ * 通用请求方法
+ */
+export const request = <T>(config: RequestConfig): Promise<ResponseData<T>> => {
+	return new Promise((resolve, reject) => {
+		if (config.showLoading !== false) {
+			uni.showLoading({ title: '加载中...', mask: true })
+		}
+
+		const method = config.method || 'GET'
+		const fullUrl = BASE_URL + config.url
+
+		// 构建请求头
+		const header: Record<string, string> = {
+			'Content-Type': 'application/json',
+			...config.header
+		}
+
+		// 注入 token
+		const token = getToken()
+		if (token != null && token !== '') {
+			header['Authorization'] = 'Bearer ' + token
+		}
+
+		// console.log('[Request]', method, fullUrl)
+
+		uni.request({
+			url: fullUrl,
+			method: method as any,
+			data: config.data,
+			header: header as any,
+			success: (res : any) => {
+				//console.log('[Response]', fullUrl, JSON.stringify(res))
+				const respData = res.data as ResponseData<T>
+				const statusCode = res.statusCode as number
+				// console.log('[Response]', method, fullUrl, 'status=' + statusCode, 'code=' + respData.code)
+
+				if (statusCode === 200 && respData.code === 200) {
+					resolve(respData)
+				} else if (statusCode === 401 || respData.code === 401) {
+					clearToken()
+					uni.showToast({ title: '登录已过期，请重新登录', icon: 'none' })
+					setTimeout(() => {
+						uni.reLaunch({ url: '/pages/login/login' })
+					}, 1500)
+					reject(respData)
+				} else {
+					uni.showToast({ title: (respData.message as string) || '请求失败', icon: 'none' })
+					reject(respData)
+				}
+			},
+			fail: (err : any) => {
+				// console.error('[Request Fail]', fullUrl, err)
+				uni.showToast({ title: '网络异常，请稍后重试', icon: 'none' })
+				reject(err)
+			},
+			complete: () => {
+				if (config.showLoading !== false) {
+					uni.hideLoading()
+				}
+			}
+		} as any)
+	})
+}
+
+/**
+ * GET 请求
+ */
+export const get = <T>(url: string, data?: any): Promise<ResponseData<T>> => {
+	return request<T>({ url, method: 'GET', data })
+}
+
+/**
+ * POST 请求
+ */
+export const post = <T>(url: string, data?: any): Promise<ResponseData<T>> => {
+	return request<T>({ url, method: 'POST', data })
+}
+
+/**
+ * PUT 请求
+ */
+export const put = <T>(url: string, data?: any): Promise<ResponseData<T>> => {
+	return request<T>({ url, method: 'PUT', data })
+}
+
+/**
+ * DELETE 请求
+ */
+export const del = <T>(url: string, data?: any): Promise<ResponseData<T>> => {
+	return request<T>({ url, method: 'DELETE', data })
+}
+
+/**
+ * 文件上传（统一封装，自动带 token）
+ * @param filePath 本地文件路径
+ * @param name 服务端接收字段名（默认 file）
+ * @param uploadUrl 上传接口路径（默认 /upload）
+ */
+export function upload(filePath: string, name ?: string, uploadUrl ?: string): Promise<ResponseData<{ url: string }>> {
+	return new Promise((resolve, reject) => {
+		uni.showLoading({ title: '上传中...', mask: true })
+
+		const token = getToken()
+		const header: Record<string, string> = {}
+		if (token != null && token !== '') {
+			header['Authorization'] = 'Bearer ' + token
+		}
+
+		uni.uploadFile({
+			url: BASE_URL + (uploadUrl || '/upload'),
+			filePath: filePath,
+			name: name || 'file',
+			header: header as any,
+			success: (res : any) => {
+				const data = JSON.parse(res.data as string) as ResponseData<{ url: string }>
+				if (data.code === 200) {
+					resolve(data)
+				} else {
+					uni.showToast({ title: (data.message as string) || '上传失败', icon: 'none' })
+					reject(data)
+				}
+			},
+			fail: (err : any) => {
+				uni.showToast({ title: '上传失败', icon: 'none' })
+				reject(err)
+			},
+			complete: () => { uni.hideLoading() }
+		} as any)
+	})
+}

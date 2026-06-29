@@ -1,0 +1,652 @@
+<template>
+	<view class="container">
+		<!-- 顶部导航栏 -->
+		<view class="nav-bar">
+			<view class="back-btn" @click="goBack">
+				<text class="back-icon">‹</text>
+			</view>
+			<text class="nav-title">主播列表</text>
+			<view class="nav-placeholder"></view>
+		</view>
+
+		<!-- 搜索栏 -->
+		<view class="search-section">
+			<view class="search-box">
+				<text class="search-icon">🔍</text>
+				<input class="search-input" type="text" placeholder="请输入搜索关键词" v-model="searchKey" @confirm="doSearch" />
+			</view>
+		</view>
+
+		<!-- 平台信息 -->
+		<view class="platform-section">
+			<view class="platform-info">
+				<image class="platform-logo" :src="currentPlatform.logo" mode="aspectFill" />
+				<text class="platform-name">{{currentPlatform.name}}</text>
+			</view>
+			<view class="switch-btn" @click="showPlatformModal">
+				<text class="switch-text">切换平台</text>
+			</view>
+		</view>
+
+		<!-- 标签页 -->
+		<view class="tabs-section">
+			<view class="tab-item" :class="{active: currentTab === 'all'}" @click="changeTab('all')">
+				<text class="tab-text">全部</text>
+				<view class="tab-line" v-if="currentTab === 'all'"></view>
+			</view>
+			<view class="tab-item" :class="{active: currentTab === 'pending'}" @click="changeTab('pending')">
+				<text class="tab-text">审核中</text>
+				<view class="tab-line" v-if="currentTab === 'pending'"></view>
+			</view>
+			<view class="tab-item" :class="{active: currentTab === 'approved'}" @click="changeTab('approved')">
+				<text class="tab-text">审核通过</text>
+				<view class="tab-line" v-if="currentTab === 'approved'"></view>
+			</view>
+			<view class="tab-item" :class="{active: currentTab === 'rejected'}" @click="changeTab('rejected')">
+				<text class="tab-text">审核失败</text>
+				<view class="tab-line" v-if="currentTab === 'rejected'"></view>
+			</view>
+		</view>
+
+		<!-- 主播列表 -->
+		<scroll-view class="list-section" scroll-y>
+			<!-- 无数据提示 -->
+			<view class="empty-tip" v-if="filteredList.length === 0">
+				<text class="empty-icon">📭</text>
+				<text class="empty-text">暂无主播数据</text>
+			</view>
+			<view class="anchor-card" v-for="(item, index) in filteredList" :key="index">
+				<view class="card-header">
+					<text class="platform-tag">{{item.platform}}</text>
+					<text class="status-tag" :class="item.status">{{getStatusText(item.status)}}</text>
+				</view>
+				<view class="card-body">
+					<text class="anchor-name">{{item.name}}</text>
+					<view class="info-row">
+						<text class="info-label">主播ID:</text>
+						<text class="info-value">{{item.anchorId}}</text>
+						<text class="info-label margin-left">主播手机号:</text>
+						<text class="info-value">{{item.phone}}</text>
+					</view>
+					<text class="time-text">{{item.time}}</text>
+				</view>
+			</view>
+		</scroll-view>
+
+		<!-- 切换平台弹窗 -->
+		<view class="modal-mask" v-if="platformModalVisible" @click="hidePlatformModal"></view>
+		<view class="platform-modal" v-if="platformModalVisible">
+			<view class="modal-header">
+				<text class="cancel-btn" @click="hidePlatformModal">取消</text>
+				<text class="modal-title">切换平台</text>
+				<text class="close-btn" @click="hidePlatformModal">×</text>
+			</view>
+			<scroll-view class="platform-list" scroll-y>
+				<view class="platform-item" v-for="(item, index) in platformList" :key="index" @click="selectPlatform(item)">
+					<image class="platform-item-logo" :src="item.logo" mode="aspectFill" />
+					<text class="platform-item-name">{{item.name}}</text>
+				</view>
+			</scroll-view>
+		</view>
+	</view>
+</template>
+
+<script setup lang="uts">
+	import { ref, computed } from "vue";
+	import { getPlatformsApi, getLivePlatformsApi, getAnchorsApi, getLiveAnchorsApi, AnchorItem, LiveAnchorItem } from "@/utils/api.uts";
+	import { getUserInfo } from "@/utils/auth.uts";
+
+	// 判断是否超级管理员 (role === 0)
+	const userInfo = getUserInfo()
+	const isAdmin = ref<boolean>(userInfo != null && (userInfo.role as number) === 0)
+
+	// 页面参数
+	const appName = ref<string>('')
+	const platformId = ref<number>(0)
+	const platformType = ref<'chat' | 'live'>('chat') // 平台类型：chat=语聊, live=直播
+
+	// 搜索关键词
+	const searchKey = ref<string>('')
+
+	// 当前标签
+	const currentTab = ref<string>('all')
+
+	// 平台弹窗显示状态
+	const platformModalVisible = ref<boolean>(false)
+
+	// 平台列表（从 API 加载）
+	const platformList = ref<{
+		name: string,
+		logo: string,
+		id: number
+	}[]>([])
+
+	// 当前平台
+	const currentPlatform = ref<{
+		name: string,
+		logo: string,
+		id: number
+	}>({
+		name: '全部平台',
+		logo: '/static/default-platform.png',
+		id: 0
+	})
+
+	// 主播列表数据
+	type AnchorCardItem = {
+		platform : string,
+		name : string,
+		anchorId : string,
+		phone : string,
+		time : string,
+		status : string
+	}
+
+	const anchorList = ref<AnchorCardItem[]>([])
+
+	// 当前使用的 API（根据平台类型动态选择）
+	const currentGetAnchorsApi = computed(() => {
+		return platformType.value === 'chat' ? getAnchorsApi : getLiveAnchorsApi
+	})
+
+	// 过滤后的列表（后端已按状态筛选，前端仅处理搜索）
+	const filteredList = computed<AnchorCardItem[]>(() => {
+		let list = anchorList.value
+		if (searchKey.value !== '') {
+			const key = searchKey.value.toLowerCase()
+			list = list.filter(item =>
+				item.name.toLowerCase().includes(key) ||
+				item.anchorId.includes(key) ||
+				item.phone.includes(key)
+			)
+		}
+		return list
+	})
+
+	// 加载平台列表
+	const loadPlatformList = () : void => {
+		// 根据平台类型调用不同 API
+		const apiCall = platformType.value === 'live' ? getLivePlatformsApi() : getPlatformsApi()
+		apiCall.then((list) => {
+			if (list.length > 0) {
+				const platforms = list.map((item) => ({
+					id: item.id,
+					name: item.platformName,
+					logo: item.platformImg || '/static/default-platform.png'
+				}))
+				// 超级管理员多一个"全部平台"选项
+				if (isAdmin.value) {
+					platformList.value = [
+						{ id: 0, name: '全部平台', logo: '/static/default-platform.png' },
+						...platforms
+					]
+				} else {
+					platformList.value = platforms
+				}
+
+				// 根据当前 platformId 更新当前平台的 logo（解决刚进入页面时 logo 未渲染的问题）
+				if (platformId.value > 0) {
+					const match = platforms.find((p) => p.id === platformId.value)
+					if (match != null) {
+						currentPlatform.value.name = match.name
+						currentPlatform.value.logo = match.logo
+					}
+				}
+			}
+		}).catch((err) => {
+			console.error('加载平台列表失败:', err)
+		})
+	}
+
+	// 加载主播数据
+	const loadAnchors = () : void => {
+		// 构建查询参数
+		const params: any = {}
+		// 超级管理员选择"全部平台"时不传 platformId，后端返回所有主播
+		// 普通用户必须传 platformId
+		if (!isAdmin.value || platformId.value > 0) {
+			params.platformId = platformId.value
+		}
+		// 标签筛选：非"全部"时传 status 给后端
+		if (currentTab.value !== 'all') {
+			// 将标签映射为后端期望的 status 值
+			// 0=审核中, 1=已审核, 2=未通过
+			const statusMap: Record<string, number> = {
+				'pending': 0,
+				'approved': 1,
+				'rejected': 2
+			}
+			params.status = statusMap[currentTab.value]
+		}
+		// 根据平台类型调用不同 API
+		const apiPromise = platformType.value === 'live' 
+			? getLiveAnchorsApi(params) 
+			: getAnchorsApi(params)
+		apiPromise.then((result) => {
+			const list = result.list
+			if (list != null && list.length > 0) {
+				anchorList.value = list.map((item: AnchorItem | LiveAnchorItem): AnchorCardItem => ({
+					platform: item.platformName || appName.value || '',
+					name: item.nickname,
+					anchorId: item.anchorId,
+					phone: item.phone,
+					time: (item as any).registerTime || '',
+					status: item.status
+				}))
+			} else {
+				anchorList.value = []
+			}
+		}).catch((err) => {
+			console.error('加载主播列表失败:', err)
+			anchorList.value = []
+		})
+	}
+
+	onLoad((options : UTSJSONObject | null) => {
+		console.log('anchor-list onLoad:', JSON.stringify(options))
+		if (options != null) {
+			const name = options['name']
+			const pid = options['platformId']
+			const type = options['platformType']
+			// 读取平台类型：chat=语聊, live=直播
+			if (type != null) {
+				platformType.value = type as 'chat' | 'live'
+			}
+			if (name != null) {
+				appName.value = name as string
+				if (isAdmin.value) {
+					currentPlatform.value.name = '全部平台'
+				} else {
+					currentPlatform.value.name = name as string
+				}
+			}
+			if (pid != null) {
+				const pidNum = Number(pid)
+				if (!isAdmin.value) {
+					platformId.value = pidNum
+					currentPlatform.value.id = pidNum
+				}
+				// 超级管理员默认 platformId=0，加载全部
+			}
+		}
+		// 加载数据
+		loadPlatformList()
+		loadAnchors()
+	})
+
+	// 返回上一页
+	const goBack = () : void => {
+		uni.navigateBack()
+	}
+
+	// 切换标签
+	const changeTab = (tab : string) : void => {
+		currentTab.value = tab
+		loadAnchors()
+	}
+
+	// 获取状态文本
+	const getStatusText = (status : string | number) : string => {
+		const numStatus = parseInt(status as string)
+		if (!isNaN(numStatus)) {
+			const numMap: Record<number, string> = {
+				0: '审核中',
+				1: '审核通过',
+				2: '审核失败'
+			}
+			return numMap[numStatus] || String(status)
+		}
+		const map : Record<string, string> = {
+			'0': '审核中',
+			'1': '审核通过',
+			'2': '审核失败'
+		}
+		return map[status as string] || status as string
+	}
+
+	// 搜索
+	const doSearch = () : void => {
+		console.log('search:', searchKey.value)
+	}
+
+	// 显示平台弹窗
+	const showPlatformModal = () : void => {
+		platformModalVisible.value = true
+	}
+
+	// 隐藏平台弹窗
+	const hidePlatformModal = () : void => {
+		platformModalVisible.value = false
+	}
+
+	// 选择平台
+	const selectPlatform = (item : {name: string, logo: string, id: number}) : void => {
+		currentPlatform.value = item
+		platformId.value = item.id
+		appName.value = item.name
+		platformModalVisible.value = false
+		// 切换平台重新加载主播数据
+		loadAnchors()
+		console.log('switch to platform:', item.name)
+	}
+</script>
+
+<style>
+	.container {
+		flex: 1;
+		background-color: #F5F5F5;
+	}
+
+	/* 顶部导航栏 */
+	.nav-bar {
+		flex-direction: row;
+		justify-content: space-between;
+		align-items: center;
+		padding: 60rpx 20rpx 20rpx 20rpx;
+		background-color: #FFFFFF;
+		border-bottom: 1rpx solid #EEEEEE;
+	}
+
+	.back-btn {
+		width: 60rpx;
+		height: 60rpx;
+		justify-content: center;
+		align-items: center;
+	}
+
+	.back-icon {
+		font-size: 48rpx;
+		color: #333333;
+	}
+
+	.nav-title {
+		font-size: 34rpx;
+		color: #333333;
+		font-weight: 500;
+	}
+
+	.nav-placeholder {
+		width: 60rpx;
+	}
+
+	/* 搜索栏 */
+	.search-section {
+		padding: 20rpx 30rpx;
+		background-color: #FFFFFF;
+	}
+
+	.search-box {
+		flex-direction: row;
+		align-items: center;
+		background-color: #F5F5F5;
+		border-radius: 40rpx;
+		padding: 16rpx 30rpx;
+		border: 1rpx solid #E0E0E0;
+	}
+
+	.search-icon {
+		font-size: 28rpx;
+		margin-right: 16rpx;
+	}
+
+	.search-input {
+		flex: 1;
+		font-size: 28rpx;
+		color: #333333;
+	}
+
+	.search-input::placeholder {
+		color: #999999;
+	}
+
+	/* 平台信息 */
+	.platform-section {
+		flex-direction: row;
+		justify-content: space-between;
+		align-items: center;
+		padding: 20rpx 30rpx;
+		background-color: #FFFFFF;
+	}
+
+	.platform-info {
+		flex-direction: row;
+		align-items: center;
+	}
+
+	.platform-logo {
+		width: 80rpx;
+		height: 80rpx;
+		border-radius: 16rpx;
+		margin-right: 16rpx;
+	}
+
+	.platform-name {
+		font-size: 30rpx;
+		color: #333333;
+		font-weight: 500;
+	}
+
+	.switch-btn {
+		background: linear-gradient(135deg, #F5C76B, #E8B84D);
+		padding: 16rpx 32rpx;
+		border-radius: 30rpx;
+	}
+
+	.switch-text {
+		font-size: 26rpx;
+		color: #8B6914;
+		font-weight: 500;
+	}
+
+	/* 标签页 */
+	.tabs-section {
+		flex-direction: row;
+		justify-content: space-around;
+		padding: 20rpx 0;
+		background-color: #FFFFFF;
+		border-bottom: 1rpx solid #EEEEEE;
+	}
+
+	.tab-item {
+		align-items: center;
+		padding: 10rpx 20rpx;
+	}
+
+	.tab-text {
+		font-size: 28rpx;
+		color: #666666;
+	}
+
+	.tab-item.active .tab-text {
+		color: #333333;
+		font-weight: bold;
+	}
+
+	.tab-line {
+		width: 40rpx;
+		height: 4rpx;
+		background-color: #F5C76B;
+		margin-top: 8rpx;
+		border-radius: 2rpx;
+	}
+
+	/* 列表区域 */
+	.list-section {
+		flex: 1;
+		padding: 20rpx;
+	}
+
+	/* 无数据提示 */
+	.empty-tip {
+		flex: 1;
+		flex-direction: column;
+		justify-content: center;
+		align-items: center;
+		padding: 160rpx 0 80rpx 0;
+	}
+
+	.empty-icon {
+		font-size: 100rpx;
+		margin-bottom: 24rpx;
+		opacity: 0.6;
+	}
+
+	.empty-text {
+		font-size: 28rpx;
+		color: #BBBBBB;
+	}
+
+	.anchor-card {
+		background-color: #FFFFFF;
+		border-radius: 16rpx;
+		margin-bottom: 20rpx;
+		overflow: hidden;
+	}
+
+	.card-header {
+		flex-direction: row;
+		justify-content: space-between;
+		align-items: center;
+		padding: 20rpx 24rpx;
+		background: linear-gradient(135deg, #F5C76B, #E8B84D);
+	}
+
+	.platform-tag {
+		font-size: 26rpx;
+		color: #FFFFFF;
+		font-weight: 500;
+	}
+
+	.status-tag {
+		font-size: 24rpx;
+		color: #FFFFFF;
+		padding: 6rpx 16rpx;
+		border-radius: 20rpx;
+		background-color: rgba(255, 255, 255, 0.3);
+	}
+
+	.status-tag.approved {
+		color: #4CAF50;
+		background-color: rgba(76, 175, 80, 0.2);
+	}
+
+	.status-tag.pending {
+		color: #FF9800;
+		background-color: rgba(255, 152, 0, 0.2);
+	}
+
+	.status-tag.rejected {
+		color: #F44336;
+		background-color: rgba(244, 67, 54, 0.2);
+	}
+
+	.card-body {
+		padding: 24rpx;
+	}
+
+	.anchor-name {
+		font-size: 32rpx;
+		color: #333333;
+		font-weight: bold;
+		margin-bottom: 16rpx;
+	}
+
+	.info-row {
+		flex-direction: row;
+		flex-wrap: wrap;
+		margin-bottom: 12rpx;
+	}
+
+	.info-label {
+		font-size: 24rpx;
+		color: #999999;
+		margin-right: 8rpx;
+	}
+
+	.info-label.margin-left {
+		margin-left: 30rpx;
+	}
+
+	.info-value {
+		font-size: 24rpx;
+		color: #333333;
+	}
+
+	.time-text {
+		font-size: 22rpx;
+		color: #999999;
+	}
+
+	/* 弹窗遮罩 */
+	.modal-mask {
+		position: fixed;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		background-color: rgba(0, 0, 0, 0.5);
+		z-index: 998;
+	}
+
+	/* 平台弹窗 */
+	.platform-modal {
+		position: fixed;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		background-color: #FFFFFF;
+		border-radius: 24rpx 24rpx 0 0;
+		z-index: 999;
+		padding-bottom: 40rpx;
+	}
+
+	.modal-header {
+		flex-direction: row;
+		justify-content: space-between;
+		align-items: center;
+		padding: 30rpx;
+		border-bottom: 1rpx solid #EEEEEE;
+	}
+
+	.cancel-btn {
+		font-size: 28rpx;
+		color: #F5C76B;
+	}
+
+	.modal-title {
+		font-size: 32rpx;
+		color: #333333;
+		font-weight: 500;
+	}
+
+	.close-btn {
+		font-size: 40rpx;
+		color: #999999;
+		width: 60rpx;
+		text-align: center;
+	}
+
+	.platform-list {
+		max-height: 600rpx;
+		padding: 20rpx 0;
+	}
+
+	.platform-item {
+		flex-direction: row;
+		align-items: center;
+		padding: 24rpx 30rpx;
+		border-bottom: 1rpx solid #F5F5F5;
+	}
+
+	.platform-item-logo {
+		width: 80rpx;
+		height: 80rpx;
+		border-radius: 16rpx;
+		margin-right: 24rpx;
+	}
+
+	.platform-item-name {
+		font-size: 30rpx;
+		color: #333333;
+	}
+</style>

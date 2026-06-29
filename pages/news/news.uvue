@@ -1,0 +1,279 @@
+﻿<template>
+	<view class="container">
+		<!-- 最新公告 -->
+		<view class="notice-section">
+			<view class="notice-box">
+				<image class="notice-label-img" src="/static/gg.png" mode="aspectFit" />
+				<text class="notice-divider">|</text>
+				<swiper class="notice-swiper" vertical autoplay circular interval="3000" duration="500">
+					<swiper-item v-for="(item, index) in noticeList" :key="index">
+						<text class="notice-text">{{item}}</text>
+					</swiper-item>
+				</swiper>
+			</view>
+		</view>
+
+		<!-- 新闻资讯标题栏 -->
+		<view class="section-header">
+			<text class="section-title">新闻资讯</text>
+			<view class="more-btn" @click="goMore">
+				<text class="more-text">更多 ></text>
+			</view>
+		</view>
+
+		<!-- 新闻列表 -->
+		<scroll-view class="news-list" scroll-y @scrolltolower="goMore">
+			<view class="news-item" v-for="(item, index) in newsList" :key="index" @click="goDetail(item)">
+				<view class="news-content">
+					<text class="news-title">{{item.title}}</text>
+					<text class="news-time">{{item.publish_time || item.create_time}}</text>
+				</view>
+				<view class="news-image-box">
+					<image v-if="item.cover_url" class="news-image" :src="item.cover_url" mode="aspectFill" />
+					<view v-else class="image-placeholder">
+						<text class="placeholder-icon">📷</text>
+					</view>
+				</view>
+			</view>
+
+			<!-- 加载状态 -->
+			<view v-if="newsLoading" class="loading-tip">
+				<text class="loading-text">加载中...</text>
+			</view>
+			<view v-else-if="newsList.length >= newsTotal && newsTotal > 0" class="loading-tip">
+				<text class="loading-text">— 没有更多了 —</text>
+			</view>
+		</scroll-view>
+	</view>
+</template>
+
+<script setup lang="uts">
+import { ref } from "vue";
+	import { checkLogin } from "@/utils/auth.uts";
+	import { getNoticesApi, getNewsApi } from "@/utils/api.uts";
+
+	const noticeList = ref<string[]>([])
+	const newsList = ref<any[]>([])
+	const newsPage = ref<number>(1)
+	const newsTotal = ref<number>(0)
+	const newsLoading = ref<boolean>(false)
+
+	// 加载公告（仅已发布的，最多5条）
+	const loadNotices = () : void => {
+		getNoticesApi({
+			status: 1,
+			page: 1,
+			page_size: 5
+		}).then((data) => {
+			if (data.list.length > 0) {
+				noticeList.value = data.list.map((item) => item.title)
+			} else {
+				noticeList.value = ['暂无公告']
+			}
+		}).catch((err) => {
+			console.error('加载公告失败:', err)
+			noticeList.value = ['暂无公告']
+		})
+	}
+
+	// 加载新闻列表（已发布）
+	const loadNews = (page : number = 1) : void => {
+		if (newsLoading.value) return
+		newsLoading.value = true
+
+		getNewsApi({
+			status: 1,
+			currentPage: page,
+			pageSize: 10
+		}).then((data) => {
+			newsTotal.value = data.total
+			newsPage.value = page
+			if (page === 1) {
+				newsList.value = data.list
+			} else {
+				newsList.value = [...newsList.value, ...data.list]
+			}
+		}).catch((err) => {
+			console.error('加载新闻失败:', err)
+		}).finally(() => {
+			newsLoading.value = false
+		})
+	}
+
+	// 页面显示时检查登录并加载数据
+	onShow(() => {
+		console.log('=== news onShow ===')
+		const loginOk = checkLogin()
+		console.log('login check:', loginOk)
+		if (loginOk) {
+			loadNotices()
+			loadNews(1)
+		}
+	})
+
+	// 加载更多
+	const goMore = () : void => {
+		if (newsList.value.length >= newsTotal.value) {
+			return
+		}
+		loadNews(newsPage.value + 1)
+	}
+
+	// 查看详情 - 统一跳转到 agreement 页面，传递新闻数据
+	const goDetail = (item : any) : void => {
+		const params = encodeURIComponent(JSON.stringify({
+			id: item.id,
+			title: item.title,
+			content: item.content,
+			publish_time: item.publish_time || item.create_time,
+			category: item.category || '',
+			author: item.author || '',
+			views: item.views || 0
+		}))
+		uni.navigateTo({ url: '/pages/agreement/agreement?data=' + params })
+	}
+</script>
+
+<style>
+	.container {
+		padding-bottom: 120rpx;
+		flex: 1;
+		background-color: #F5F5F5;
+	}
+
+	/* 最新公告 */
+	.notice-section {
+		padding: 20rpx 30rpx;
+		background-color: #F5F5F5;
+		margin-top: 100rpx;
+	}
+
+	.notice-box {
+		flex-direction: row;
+		align-items: center;
+		background-color: #FFFFFF;
+		border-radius: 16rpx;
+		padding: 20rpx 24rpx;
+	}
+
+	.notice-label-img {
+		width: 140rpx;
+		height: 40rpx;
+		margin-right: 12rpx;
+	}
+
+	.notice-divider {
+		font-size: 28rpx;
+		color: #CCCCCC;
+		margin-right: 16rpx;
+	}
+
+	.notice-swiper {
+		flex: 1;
+		height: 40rpx;
+	}
+
+	.notice-text {
+		font-size: 26rpx;
+		color: #666666;
+		lines: 1;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	/* 新闻资讯标题栏 */
+	.section-header {
+		flex-direction: row;
+		justify-content: space-between;
+		align-items: center;
+		padding: 20rpx 30rpx;
+		background-color: #F5F5F5;
+	}
+
+	.section-title {
+		font-size: 32rpx;
+		color: #333333;
+		font-weight: bold;
+	}
+
+	.more-btn {
+		padding: 10rpx 0;
+	}
+
+	.more-text {
+		font-size: 26rpx;
+		color: #999999;
+	}
+
+	/* 新闻列表 */
+	.news-list {
+		flex: 1;
+		padding: 0 30rpx 30rpx 30rpx;
+	}
+
+	.news-item {
+		flex-direction: row;
+		justify-content: space-between;
+		align-items: center;
+		background-color: #FFFFFF;
+		border-radius: 16rpx;
+		padding: 24rpx;
+		margin-bottom: 20rpx;
+	}
+
+	.news-content {
+		flex: 1;
+		margin-right: 20rpx;
+	}
+
+	.news-title {
+		font-size: 30rpx;
+		color: #333333;
+		font-weight: 500;
+		margin-bottom: 16rpx;
+		lines: 1;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.news-time {
+		font-size: 24rpx;
+		color: #999999;
+	}
+
+	.news-image-box {
+		width: 120rpx;
+		height: 120rpx;
+		border-radius: 12rpx;
+		overflow: hidden;
+	}
+
+	.news-image {
+		width: 120rpx;
+		height: 120rpx;
+	}
+
+	.image-placeholder {
+		width: 120rpx;
+		height: 120rpx;
+		background-color: #F0F0F0;
+		justify-content: center;
+		align-items: center;
+	}
+
+	.placeholder-icon {
+		font-size: 40rpx;
+		color: #CCCCCC;
+	}
+
+	/* 加载状态 */
+	.loading-tip {
+		padding: 20rpx 0;
+		align-items: center;
+	}
+
+	.loading-text {
+		font-size: 24rpx;
+		color: #999999;
+	}
+</style>

@@ -1,0 +1,653 @@
+<template>
+	<view class="container">
+		<!-- 顶部用户信息区 -->
+		<view class="user-section">
+			<view class="user-info">
+				<image class="user-avatar" :src="userInfo.avatar" mode="aspectFill" />
+				<view class="user-text">
+					<text class="user-name">{{ userInfo.name }}</text>
+					<text class="user-id">ID:{{ userInfo.id }}</text>
+				</view>
+			</view>
+			<view class="user-actions">
+				<view class="action-item" @click="goContactSuperior">
+					
+					<text class="action-text">联系上级</text>
+				</view>
+				<view class="action-item" @click="goPromote">
+					
+					<text class="action-text">我要推广</text>
+				</view>
+			</view>
+		</view>
+
+		<!-- 余额卡片 -->
+		<view class="balance-card">
+			<view class="balance-top">
+				<view class="balance-left">
+					<text class="balance-label">我的余额（元）</text>
+					<text class="balance-amount">{{ balance.amount }}</text>
+				</view>
+				<view class="balance-right">
+					<view class="withdraw-btn" @click="goWithdraw">
+						<text class="withdraw-text">我要提现</text>
+					</view>
+					<image class="yuan-icon" src="/static/svg/yuan.svg" mode="aspectFit" />
+				</view>
+			</view>
+			<view class="income-row">
+				<view class="income-item">
+					<text class="income-label">今日收益（元）</text>
+					<text class="income-value">{{ balance.todayIncome }}</text>
+				</view>
+				<view class="income-item">
+					<text class="income-label">本月收益（元）</text>
+					<text class="income-value">{{ balance.monthIncome }}</text>
+				</view>
+				<view class="income-item">
+					<text class="income-label">累计收益（元）</text>
+					<text class="income-value">{{ balance.totalIncome }}</text>
+				</view>
+			</view>
+		</view>
+		<!-- 广告 -->
+		<view class="advertising">
+			<image src="/static/yd-CdXXjV5T.png" mode=""></image>
+		</view>
+		<!-- 我的团队 -->
+		<view class="team-section">
+			<view class="section-header" @click="goTeam">
+				<text class="section-title">我的团队</text>
+				<image class="arrow-icon" src="/static/svg/jt.png" mode="aspectFit" />
+			</view>
+			<view class="team-stats">
+				<view class="team-stat-item">
+					<text class="team-stat-label">我的主播</text>
+					<text class="team-stat-value">{{ teamData.myAnchors }}</text>
+				</view>
+				<view class="team-divider"></view>
+				<view class="team-stat-item">
+					<text class="team-stat-label">团队主播</text>
+					<text class="team-stat-value">{{ teamData.teamAnchors }}</text>
+				</view>
+			</view>
+			<view class="agent-stats">
+				<view class="agent-stat-item">
+					<text class="agent-stat-label">直推代理</text>
+					<text class="agent-stat-value">{{ teamData.directAgents }}</text>
+				</view>
+				<view class="agent-divider"></view>
+				<view class="agent-stat-item">
+					<text class="agent-stat-label">间接代理</text>
+					<text class="agent-stat-value">{{ teamData.indirectAgents }}</text>
+				</view>
+				<view class="agent-divider"></view>
+				<view class="agent-stat-item">
+					<text class="agent-stat-label">团队代理</text>
+					<text class="agent-stat-value">{{ teamData.teamAgents }}</text>
+				</view>
+			</view>
+		</view>
+
+		<!-- 功能列表 -->
+		<view class="menu-section">
+			<text class="menu-header">功能列表</text>
+			<view class="menu-list">
+				<!-- <view class="menu-item" @click="goMyPerformance">
+					<view class="menu-left">
+						<image class="menu-icon" src="/static/svg/1.svg" mode="aspectFit" />
+						<text class="menu-text">我的业绩</text>
+					</view>
+					<image class="arrow-right" src="/static/svg/jt.png" mode="aspectFit" />
+				</view> -->
+				<view class="menu-item" @click="goNotice">
+					<view class="menu-left">
+						<image class="menu-icon" src="/static/svg/1.svg" mode="aspectFit" />
+						<text class="menu-text">系统公告</text>
+					</view>
+					<image class="arrow-right" src="/static/svg/jt.png" mode="aspectFit" />
+				</view>
+				<view class="menu-item" @click="goFinanceDetail">
+					<view class="menu-left">
+						<image class="menu-icon" src="/static/svg/2.svg" mode="aspectFit" />
+						<text class="menu-text">资金明细</text>
+					</view>
+					<image class="arrow-right" src="/static/svg/jt.png" mode="aspectFit" />
+				</view>
+				<view class="menu-item" @click="goWithdrawAccount">
+					<view class="menu-left">
+						<image class="menu-icon" src="/static/svg/3.svg" mode="aspectFit" />
+						<text class="menu-text">提现账户</text>
+					</view>
+					<image class="arrow-right" src="/static/svg/jt.png" mode="aspectFit" />
+				</view>
+				<view class="menu-item" @click="goTeam">
+					<view class="menu-left">
+						<image class="menu-icon" src="/static/svg/4.svg" mode="aspectFit" />
+						<text class="menu-text">我的团队</text>
+					</view>
+					<image class="arrow-right" src="/static/svg/jt.png" mode="aspectFit" />
+				</view>
+				<view class="menu-item" @click="goRules">
+					<view class="menu-left">
+						<image class="menu-icon" src="/static/svg/5.svg" mode="aspectFit" />
+						<text class="menu-text">违规公示</text>
+					</view>
+					<image class="arrow-right" src="/static/svg/jt.png" mode="aspectFit" />
+				</view>
+				<!-- <view class="menu-item" @click="goAppDownload">
+					<view class="menu-left">
+						<image class="menu-icon" src="/static/svg/6.svg" mode="aspectFit" />
+						<text class="menu-text">APP下载</text>
+					</view>
+					<image class="arrow-right" src="/static/svg/jt.png" mode="aspectFit" />
+				</view> -->
+			</view>
+		</view>
+
+		<!-- 退出登录 -->
+		<view class="logout-section">
+			<view class="logout-btn" @click="doLogout">
+				<text class="logout-text">退出登录</text>
+			</view>
+		</view>
+	</view>
+</template>
+
+<script setup lang="uts">
+import { onShow } from "@dcloudio/uni-app";
+	import { checkLogin, clearToken } from "@/utils/auth.uts";
+	import {
+		getUserInfoApi,
+		getSummaryStatsApi,
+		getMyAccountStatsApi,
+		getMyIndirectStatsApi,
+		type AdminInfo,
+		type SummaryStats
+	} from "@/utils/api.uts"
+
+	// ========== 数据 ==========
+	const userInfo = ref({
+		name: '',
+		id: '',
+		avatar: '',
+		balance: '0'
+	})
+
+	const balance = ref({
+		amount: '0',
+		todayIncome: '0',
+		monthIncome: '0',
+		totalIncome: '0'
+	})
+
+	const teamData = ref({
+		myAnchors: '0',
+		teamAnchors: '0',
+		directAgents: '0',
+		indirectAgents: '0',
+		teamAgents: '0'
+	})
+
+	onShow(() => {
+		checkLogin()
+		loadAllData()
+	})
+
+	// ========== 加载所有数据 ==========
+	const loadAllData = () => {
+		// 并行加载用户信息 + 业绩汇总 + 账户统计
+		Promise.all([
+			getUserInfoApi(),
+			getSummaryStatsApi(),
+			getMyAccountStatsApi()
+		]).then(([user, stats, accountStats]) : void => {
+			// 用户信息
+			userInfo.value = {
+				name: user.nickname || user.username || '',
+				id: String(user.id),
+				avatar: user.avatar || '/static/gg.png',
+				balance: user.balance || '0'
+			}
+			// 余额（来自 auth/info）
+			balance.value.amount = user.balance || '0'
+			// 收益（来自 summaryStats）
+			balance.value.todayIncome = stats.todayIncome.toFixed(2)
+			balance.value.monthIncome = stats.monthIncome.toFixed(2)
+			balance.value.totalIncome = stats.totalIncome.toFixed(4).replace(/\.?0+$/, '')
+			// 主播数（来自 myAccountStats）
+			teamData.value.myAnchors = String(accountStats.anchorCount)
+			teamData.value.teamAnchors = String(accountStats.anchorCount)
+			// 直推代理 = 我邀请的用户数 + 我邀请的主播数
+			const directUserCount = accountStats.subUserCount || 0
+			const directAnchorCount = accountStats.anchorCount || 0
+			const directTotal = directUserCount + directAnchorCount
+			teamData.value.directAgents = String(directTotal)
+
+			// 加载间推代理（单次请求）
+			loadIndirectAgents(directTotal)
+		}).catch((_err : any) => {
+			// 核心接口失败时，尝试加载间推数据
+			loadIndirectAgents(parseInt(teamData.value.directAgents) || 0)
+		})
+	}
+
+	// 加载间推代理数（只请求一次）
+	const loadIndirectAgents = (directTotal : number) : void => {
+		getMyIndirectStatsApi()
+			.then((res) => {
+				teamData.value.indirectAgents = String(res.indirectAgentCount || 0)
+				teamData.value.teamAgents = String(directTotal + (res.indirectAgentCount || 0))
+			})
+			.catch(() => {
+				teamData.value.indirectAgents = '0'
+				teamData.value.teamAgents = String(directTotal)
+			})
+	}
+
+	// 联系上级
+	const goContactSuperior = () : void => {
+		uni.showToast({ title: '暂无上级信息', icon: 'none' })
+	}
+
+	// 跳转推广页
+	const goPromote = () : void => {
+		uni.navigateTo({ url: '/pages/promote/promote' })
+	}
+
+	// 跳转提现
+	const goWithdraw = () : void => {
+		uni.navigateTo({ url: '/pages/withdraw/withdraw' })
+	}
+
+	// 跳转提现账户
+	const goWithdrawAccount = () : void => {
+		uni.navigateTo({ url: '/pages/withdraw-account/withdraw-account' })
+	}
+
+	// 跳转资金明细
+	const goFinanceDetail = () : void => {
+		uni.navigateTo({ url: '/pages/finance-detail/finance-detail' })
+	}
+
+	// 跳转违规公示
+	const goRules = () : void => {
+		uni.navigateTo({ url: '/pages/rules/rules' })
+	}
+
+	// 跳转APP下载
+	const goAppDownload = () : void => {
+		uni.navigateTo({ url: '/pages/app-download/app-download' })
+	}
+
+	// 跳转我的业绩
+	const goMyPerformance = () : void => {
+		uni.navigateTo({ url: '/pages/my-performance/my-performance' })
+	}
+
+	// 跳转系统公告
+	const goNotice = () : void => {
+		uni.navigateTo({ url: '/pages/notice/notice' })
+	}
+
+	// 跳转我的团队
+	const goTeam = () : void => {
+		uni.navigateTo({ url: '/pages/team/team' })
+	}
+
+	// 退出登录
+	const doLogout = () : void => {
+		uni.showModal({
+			title: '提示',
+			content: '确定要退出登录吗？',
+			success: (res : any) : void => {
+				if (res.confirm) {
+					clearToken()
+					uni.showToast({ title: '已退出登录', icon: 'success' })
+					setTimeout(() => {
+						uni.reLaunch({ url: '/pages/login/login' })
+					}, 1500)
+				}
+			}
+		})
+	}
+</script>
+
+<style>
+	.container {
+		/* background-color: #F5F0E8; */
+		min-height: 100vh;
+		padding-bottom: 30rpx;
+		    background: linear-gradient(180deg, #F5C76B, #e8b84d00);
+	}
+
+	/* 用户信息区 */
+	.user-section {
+		/* background: linear-gradient(135deg, #F5C76B, #E8B84D); */
+		padding: 80rpx 30rpx 80rpx 30rpx;
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		justify-content: space-between;
+		
+	}
+
+	.user-info {
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+	}
+
+	.user-avatar {
+		width: 110rpx;
+		height: 110rpx;
+		border-radius: 55rpx;
+		margin-right: 20rpx;
+	}
+
+	.user-text {
+		display: flex;
+		flex-direction: column;
+	}
+
+	.user-name {
+		font-size: 38rpx;
+		color: #333333;
+		font-weight: 600;
+	}
+
+	.user-id {
+		font-size: 24rpx;
+		color: rgba(103,75,0,.565);
+		margin-top: 6rpx;
+	}
+
+	.user-actions {
+		display: flex;
+		flex-direction: column;
+		gap: 12rpx;
+	}
+
+	.action-item {
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		background-color: rgba(255, 255, 255, 0.9);
+		border-radius: 28rpx;
+		padding: 10rpx 20rpx;
+	}
+
+	.action-icon {
+		width: 28rpx;
+		height: 28rpx;
+		margin-right: 8rpx;
+	}
+
+	.action-text {
+		font-size: 22rpx;
+		color: #666666;
+	}
+
+	/* 余额卡片 */
+	.balance-card {
+		background-color: #FFFFFF;
+		margin: -15rpx 24rpx 16rpx 24rpx;
+		border-radius: 16rpx;
+		padding: 26rpx;
+		box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.06);
+		/* margin-top: 30rpx; */
+	}
+	.advertising{
+		width: 100%;
+		height: 180rpx;
+		border-radius: 55rpx;
+		overflow: hidden;
+		padding: 10rpx 26rpx 26rpx 26rpx;
+	}
+	.advertising>image{
+		width: 100%;
+		height: 100%;
+		border-radius: 15rpx;
+	}
+	.balance-top {
+		display: flex;
+		flex-direction: row;
+		justify-content: space-between;
+		align-items: center;
+	}
+
+	.balance-left {
+		display: flex;
+		flex-direction: column;
+	}
+
+	.balance-label {
+		font-size: 24rpx;
+		color: #999999;
+	}
+
+	.balance-amount {
+		font-size: 48rpx;
+		color: #333333;
+		font-weight: 700;
+		margin-top: 8rpx;
+	}
+
+	.balance-right {
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+	}
+
+	.withdraw-btn {
+		background-color: #F0C275;
+		border-radius: 28rpx;
+		padding: 12rpx 26rpx;
+		margin-right: 12rpx;
+	}
+
+	.withdraw-text {
+		font-size: 24rpx;
+		color: #FFFFFF;
+	}
+
+	.yuan-icon {
+		width: 50rpx;
+		height: 50rpx;
+	}
+
+	.income-row {
+		display: flex;
+		flex-direction: row;
+		justify-content: space-between;
+		background: linear-gradient(135deg, #FFF8E8, #FFEFCC);
+		border-radius: 12rpx;
+		padding: 22rpx 16rpx;
+		margin-top: 20rpx;
+	}
+
+	.income-item {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+	}
+
+	.income-label {
+		font-size: 20rpx;
+		color: #B8923A;
+		margin-bottom: 6rpx;
+	}
+
+	.income-value {
+		font-size: 28rpx;
+		color: #D4A520;
+		font-weight: 600;
+	}
+
+	/* 团队区域 */
+	.team-section {
+		background-color: #FFFFFF;
+		margin: 0 24rpx 16rpx 24rpx;
+		border-radius: 16rpx;
+		padding: 24rpx;
+	}
+
+	.section-header {
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		justify-content: space-between;
+		margin-bottom: 20rpx;
+	}
+
+	.section-title {
+		font-size: 30rpx;
+		color: #333333;
+		font-weight: 600;
+	}
+
+	.arrow-icon {
+		width: 24rpx;
+		height: 24rpx;
+	}
+
+	.team-stats {
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		background-color: #FAFAFA;
+		border-radius: 10rpx;
+		padding: 18rpx 0;
+	}
+
+	.team-stat-item {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+	}
+
+	.team-stat-label {
+		font-size: 24rpx;
+		color: #666666;
+		margin-bottom: 8rpx;
+	}
+
+	.team-stat-value {
+		font-size: 32rpx;
+		color: #333333;
+		font-weight: 600;
+	}
+
+	.team-divider {
+		width: 1rpx;
+		height: 50rpx;
+		background-color: #EEEEEE;
+	}
+
+	.agent-stats {
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		margin-top: 12rpx;
+	}
+
+	.agent-stat-item {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+	}
+
+	.agent-stat-label {
+		font-size: 22rpx;
+		color: #52C41A;
+		margin-bottom: 6rpx;
+	}
+
+	.agent-stat-value {
+		font-size: 28rpx;
+		color: #52C41A;
+		font-weight: 600;
+	}
+
+	.agent-divider {
+		width: 1rpx;
+		height: 50rpx;
+		background-color: #EEEEEE;
+	}
+
+	/* 功能列表 */
+	.menu-section {
+		background-color: #FFFFFF;
+		margin: 0 24rpx 16rpx 24rpx;
+		border-radius: 16rpx;
+		padding: 24rpx;
+	}
+
+	.menu-header {
+		font-size: 28rpx;
+		color: #333333;
+		font-weight: 500;
+		margin-bottom: 16rpx;
+	}
+
+	.menu-list {
+		border-top: 1rpx solid #F5F5F5;
+	}
+
+	.menu-item {
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		justify-content: space-between;
+		padding: 24rpx 0;
+		border-bottom: 1rpx solid #F5F5F5;
+	}
+
+	.menu-item:last-child {
+		border-bottom: none;
+	}
+
+	.menu-left {
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+	}
+
+	.menu-icon {
+		width: 30rpx;
+		height: 30rpx;
+		margin-right: 18rpx;
+	}
+
+	.menu-text {
+		font-size: 23rpx;
+		color: #755500;
+	}
+
+	.arrow-right {
+		width: 24rpx;
+		height: 24rpx;
+	}
+
+	/* 退出登录 */
+	.logout-section {
+		padding: 30rpx 24rpx 50rpx 24rpx;
+	}
+
+	.logout-btn {
+		background-color: #F0C275;
+		border-radius: 44rpx;
+		padding: 26rpx 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.logout-text {
+		font-size: 30rpx;
+		color: #FFFFFF;
+		font-weight: 500;
+	}
+</style>

@@ -1,0 +1,162 @@
+<template>
+	<view class="container">
+		<!-- 顶部导航栏 -->
+		<view class="nav-bar">
+			<view class="back-btn" @click="goBack">
+				<text class="back-icon">‹</text>
+			</view>
+			<text class="nav-title">{{appName}}应用介绍</text>
+			<view class="nav-placeholder"></view>
+		</view>
+
+		<!-- 内容区域 -->
+		<view class="content-area">
+			<!-- 暂无数据占位 -->
+			<view class="empty-state" v-if="!hasContent">
+				<view class="empty-icon">
+					<view class="doc-icon">
+						<view class="doc-line"></view>
+						<view class="doc-line"></view>
+						<view class="doc-line short"></view>
+					</view>
+				</view>
+				<text class="empty-text">暂无数据</text>
+			</view>
+
+			<!-- 有数据时显示 -->
+			<view class="intro-content" v-else>
+				<text class="intro-text">{{introContent}}</text>
+			</view>
+		</view>
+	</view>
+</template>
+
+<script setup lang="uts">
+	// 页面参数
+	const appName = ref<string>('')
+	const introContent = ref<string>('')
+	const hasContent = ref<boolean>(false)
+
+	onLoad((options : UTSJSONObject | null) => {
+		console.log('app-intro onLoad:', JSON.stringify(options))
+		if (options != null) {
+			const name = options['name']
+			if (name != null) {
+				appName.value = name as string
+			}
+			const content = options['content']
+			if (content != null) {
+				introContent.value = content as string
+				hasContent.value = true
+			}
+		}
+	})
+
+	// 返回上一页
+	const goBack = () : void => {
+		uni.navigateBack()
+	}
+</script>
+
+<style>
+	.container {
+		flex: 1;
+		background-color: #F5F5F5;
+	}
+
+	/* 顶部导航栏 */
+	.nav-bar {
+		flex-direction: row;
+		justify-content: space-between;
+		align-items: center;
+		padding: 60rpx 20rpx 20rpx 20rpx;
+		background-color: #FFFFFF;
+		border-bottom: 1rpx solid #EEEEEE;
+	}
+
+	.back-btn {
+		width: 60rpx;
+		height: 60rpx;
+		justify-content: center;
+		align-items: center;
+	}
+
+	.back-icon {
+		font-size: 48rpx;
+		color: #333333;
+	}
+
+	.nav-title {
+		font-size: 34rpx;
+		color: #333333;
+		font-weight: 500;
+	}
+
+	.nav-placeholder {
+		width: 60rpx;
+	}
+
+	/* 内容区域 */
+	.content-area {
+		flex: 1;
+		padding: 40rpx;
+	}
+
+	/* 空状态 */
+	.empty-state {
+		flex: 1;
+		justify-content: center;
+		align-items: center;
+		margin-top: 200rpx;
+	}
+
+	.empty-icon {
+		width: 200rpx;
+		height: 200rpx;
+		background-color: #F0F0F0;
+		border-radius: 20rpx;
+		justify-content: center;
+		align-items: center;
+		margin-bottom: 40rpx;
+	}
+
+	.doc-icon {
+		width: 100rpx;
+		height: 120rpx;
+		background-color: #E0E0E0;
+		border-radius: 8rpx;
+		padding: 20rpx;
+		justify-content: center;
+		align-items: center;
+	}
+
+	.doc-line {
+		width: 60rpx;
+		height: 8rpx;
+		background-color: #CCCCCC;
+		border-radius: 4rpx;
+		margin-bottom: 12rpx;
+	}
+
+	.doc-line.short {
+		width: 40rpx;
+	}
+
+	.empty-text {
+		font-size: 28rpx;
+		color: #999999;
+	}
+
+	/* 介绍内容 */
+	.intro-content {
+		background-color: #FFFFFF;
+		border-radius: 16rpx;
+		padding: 30rpx;
+	}
+
+	.intro-text {
+		font-size: 28rpx;
+		color: #333333;
+		line-height: 1.8;
+	}
+</style>

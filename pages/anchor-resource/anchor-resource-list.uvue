@@ -1,0 +1,441 @@
+<template>
+	<view class="page">
+		<!-- Navigation Header -->
+		<view class="nav-header" :style="{ paddingTop: statusBarHeight + 'px' }">
+			<view class="nav-left" @click="goBack">
+				<svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+					<path d="M15 18l-6-6 6-6" stroke-linecap="round" stroke-linejoin="round"/>
+				</svg>
+			</view>
+			<text class="nav-title">主播资源管理</text>
+			<view class="nav-right"></view>
+		</view>
+
+		<!-- Filter Tabs -->
+		<view class="filter-tabs">
+			<scroll-view class="tabs-scroll" scroll-x="true">
+				<view class="tabs-wrapper">
+					<text v-for="(tab, index) in tabs" :key="index"
+						:class="['tab-item', currentTab === index ? 'tab-active' : '']"
+						@click="switchTab(index)">{{ tab.name }}</text>
+				</view>
+			</scroll-view>
+		</view>
+
+		<!-- Content Area -->
+		<scroll-view class="main-content" scroll-y="true" @scrolltolower="loadMore">
+			<!-- Empty State -->
+			<view class="empty-state" v-if="filteredList.length === 0 && !loading">
+				<text class="empty-text">暂无数据</text>
+			</view>
+
+			<!-- Data List -->
+			<view class="list-container" v-else>
+				<view v-for="(item, index) in filteredList" :key="item.id" :class="['card', 'animate-item']"
+					:style="{ animationDelay: (index * 0.05) + 's' }" @click="goToDetail(item.id)">
+					<!-- 左右布局：左头像 右信息 -->
+					<view class="card-row">
+						<!-- 左侧头像 -->
+						<view class="avatar-box">
+							<text class="avatar-letter">{{ (item.nickname || '未').substring(0, 1) }}</text>
+							<view class="pending-dot" v-if="item.audit_status === 0"></view>
+						</view>
+
+						<!-- 右侧信息 -->
+						<view class="info-col">
+							<!-- 第一行：昵称 + 状态 -->
+							<view class="row-top">
+								<text class="name">{{ item.nickname || '未命名' }}</text>
+								<text :class="['tag', statusTag(item.audit_status)]">{{ statusText(item.audit_status) }}</text>
+							</view>
+							<!-- 第二行：平台·手机号 -->
+							<text class="desc">{{ item.platform || '-' }} · {{ maskPhone(item.phone) }}</text>
+							<!-- 拒绝原因 -->
+							<text class="reject-txt" v-if="item.audit_status === 2 && item.reject_reason">拒绝原因：{{ item.reject_reason }}</text>
+							<!-- 第三行：时间 -->
+							<text class="time-txt">{{ formatTime(item.submit_time) }}</text>
+						</view>
+					</view>
+				</view>
+			</view>
+
+			<!-- Loading -->
+			<view class="loading-more" v-if="loading">
+				<text class="loading-text">加载中...</text>
+			</view>
+		</scroll-view>
+	</view>
+</template>
+
+<script setup lang="uts">
+	import { ref, reactive, computed, onMounted } from 'vue'
+	import { get } from '../../utils/request'
+	import { checkLogin } from '../../utils/auth.uts'
+
+	interface RecordItem {
+		id : number
+		platform : string
+		nickname : string
+		phone : string
+		wechat : string
+		union_name : string
+		current_salary : string
+		expire_date : string
+		operator : string
+		audit_status : number
+		reject_reason : string | null
+		user_id : number
+		created_at : string
+		submit_time : string
+		updated_at : string
+	}
+
+	const tabs = reactive([
+		{ name: '全部', audit_status: -1 },
+		{ name: '待审核', audit_status: 0 },
+		{ name: '已通过', audit_status: 1 },
+		{ name: '已拒绝', audit_status: 2 }
+	])
+
+	const currentTab = ref<number>(0)
+	const loading = ref<boolean>(false)
+	const page = ref<number>(1)
+	const perPage = 10
+	const allList = ref<RecordItem[]>([])
+	const statusBarHeight = ref<number>(0)
+
+	const filteredList = computed(() => {
+		if (currentTab.value === 0) {
+			return allList.value
+		}
+		const audit_status = tabs[currentTab.value].audit_status
+		return allList.value.filter(item => item.audit_status === audit_status)
+	})
+
+	onMounted(() => {
+		// 获取状态栏高度
+		const sysInfo = uni.getSystemInfoSync()
+		statusBarHeight.value = sysInfo.statusBarHeight || 0
+		
+		if (checkLogin()) {
+			loadData()
+		}
+	})
+
+	onShow(() => {
+		checkLogin()
+	})
+
+	function switchTab(index : number) {
+		currentTab.value = index
+		if (filteredList.value.length === 0) {
+			page.value = 1
+			loadData()
+		}
+	}
+
+	function loadData() {
+		loading.value = true
+		const params : any = {
+			page: page.value,
+			per_page: perPage
+		}
+		if (currentTab.value > 0) {
+			params.audit_status = tabs[currentTab.value].audit_status
+		}
+		get('/anchor-resources', params).then((res : any) => {
+			if (res.code === 200 && res.data?.list != null) {
+				if (page.value === 1) {
+					allList.value = res.data.list as RecordItem[]
+				} else {
+					allList.value = [...allList.value, ...(res.data.list as RecordItem[])]
+				}
+			}
+		}).finally(() => {
+			loading.value = false
+		})
+	}
+
+	function loadMore() {
+		if (loading.value) return
+		page.value++
+		loadData()
+	}
+
+	function goBack() {
+		// 返回上一页
+		const pages = getCurrentPages()
+		if (pages.length > 1) {
+			uni.navigateBack()
+		} else {
+			uni.reLaunch({ url: '/pages/anchor-resource/anchor-resource' })
+		}
+	}
+
+	function goToDetail(id : number) {
+		uni.navigateTo({ url: '/pages/anchor-resource/anchor-resource-detail?id=' + id })
+	}
+
+	function statusText(audit_status : number) : string {
+		if (audit_status === 0) return '待审核'
+		if (audit_status === 1) return '已通过'
+		return '已拒绝'
+	}
+
+	function statusTag(audit_status : number) : string {
+		if (audit_status === 0) return 'tag-pending'
+		if (audit_status === 1) return 'tag-ok'
+		return 'tag-reject'
+	}
+
+	function maskPhone(phone : string) : string {
+		if (!phone || phone.length < 7) return phone || ''
+		return phone.substring(0, 3) + '****' + phone.substring(phone.length - 4)
+	}
+
+	function formatTime(time : string) : string {
+		if (!time) return ''
+		const now = new Date()
+		const d = new Date(time.replace(/-/g, '/') + ' GMT+8')
+		const diff = now.getTime() - d.getTime()
+		const hours = Math.floor(diff / (1000 * 60 * 60))
+		if (hours < 1) return '刚刚'
+		if (hours < 24) return hours + '小时前'
+		if (hours < 48) return '昨天'
+		const month = String(d.getMonth() + 1).padStart(2, '0')
+		const day = String(d.getDate()).padStart(2, '0')
+		return month + '-' + day
+	}
+</script>
+
+<style scoped>
+	.page {
+		min-height: 100vh;
+		background-color: #F5F5F5;
+		flex-direction: column;
+	}
+
+	/* Navigation Header */
+	.nav-header {
+		position: relative;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		height: 88rpx;
+		padding: 0 24rpx;
+		background-color: #FFFFFF;
+		border-bottom: 1rpx solid rgba(238, 238, 238, 0.8);
+	}
+
+	.nav-left {
+		position: absolute;
+		left: 24rpx;
+		top: 50%;
+		transform: translateY(-50%);
+		width: 80rpx;
+		height: 80rpx;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.nav-right {
+		position: absolute;
+		right: 24rpx;
+		top: 50%;
+		transform: translateY(-50%);
+		width: 80rpx;
+		height: 80rpx;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.nav-icon {
+		width: 40rpx;
+		height: 40rpx;
+		color: #1A1A1A;
+	}
+
+	.nav-title {
+		font-size: 34rpx;
+		font-weight: 600;
+		color: #000000;
+		letter-spacing: 2rpx;
+	}
+
+	.filter-tabs {
+		padding: 20rpx 24rpx 14rpx;
+		background-color: #FFFFFF;
+	}
+
+	.tabs-scroll {
+		white-space: nowrap;
+	}
+
+	.tabs-wrapper {
+		flex-direction: row;
+		gap: 16rpx;
+		justify-content: space-between;
+	}
+
+	.tab-item {
+		padding: 14rpx 30rpx;
+		border-radius: 40rpx;
+		font-size: 26rpx;
+		font-weight: 500;
+		background-color: #F5F5F5;
+		color: #999999;
+	}
+
+	.tab-active {
+		background-color: #FFD54F;
+		color: #333333;
+		font-weight: 700;
+	}
+
+	.main-content {
+		flex: 1;
+		padding: 16rpx 24rpx;
+	}
+
+	.empty-state {
+		padding-top: 200rpx;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.empty-text {
+		font-size: 28rpx;
+		color: #BBBBBB;
+	}
+
+	.list-container {
+		padding-bottom: 40rpx;
+	}
+
+	.card {
+		background: #FFFFFF;
+		border-radius: 16rpx;
+		padding: 24rpx;
+		margin-bottom: 14rpx;
+		box-shadow: 0 1rpx 8rpx rgba(0, 0, 0, 0.04);
+		opacity: 0;
+		transform: translateY(10rpx);
+		animation: fadeInUp 0.3s ease forwards;
+	}
+
+	.card-row {
+		flex-direction: row;
+		align-items: center;
+	}
+
+	.avatar-box {
+		width: 90rpx;
+		height: 90rpx;
+		border-radius: 50%;
+		background: linear-gradient(135deg, #FFD54F 0%, #FFB300 100%);
+		align-items: center;
+		justify-content: center;
+		position: relative;
+		flex-shrink: 0;
+	}
+
+	.avatar-letter {
+		font-size: 36rpx;
+		font-weight: 700;
+		color: #FFFFFF;
+	}
+
+	.pending-dot {
+		position: absolute;
+		top: -2rpx;
+		right: -2rpx;
+		width: 18rpx;
+		height: 18rpx;
+		background: #FF3B30;
+		border-radius: 50%;
+		border: 3rpx solid #FFFFFF;
+	}
+
+	.info-col {
+		flex: 1;
+		margin-left: 20rpx;
+	}
+
+	.row-top {
+		flex-direction: row;
+		align-items: center;
+		justify-content: space-between;
+		margin-bottom: 6rpx;
+	}
+
+	.name {
+		font-size: 30rpx;
+		font-weight: 700;
+		color: #222222;
+		flex: 1;
+	}
+
+	.tag {
+		font-size: 22rpx;
+		font-weight: 600;
+		padding: 4rpx 16rpx;
+		border-radius: 6rpx;
+		margin-left: 12rpx;
+	}
+
+	.tag-pending {
+		background-color: #FFF8E1;
+		color: #B8860B;
+	}
+
+	.tag-ok {
+		background-color: #E8F5E9;
+		color: #388E3C;
+	}
+
+	.tag-reject {
+		background-color: #FFEBEE;
+		color: #D32F2F;
+	}
+
+	.desc {
+		font-size: 25rpx;
+		color: #888888;
+		margin-bottom: 6rpx;
+	}
+
+	.reject-txt {
+		font-size: 23rpx;
+		color: #E53935;
+		margin-bottom: 6rpx;
+	}
+
+	.time-txt {
+		font-size: 23rpx;
+		color: #BBBBBB;
+	}
+
+	.loading-more {
+		padding: 32rpx;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.loading-text {
+		font-size: 26rpx;
+		color: #CCCCCC;
+	}
+
+	@keyframes fadeInUp {
+		from {
+			opacity: 0;
+			transform: translateY(10rpx);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+</style>

@@ -1,0 +1,27 @@
+﻿<template>
+	<view class="container">
+	</view>
+</template>
+
+<script setup lang="uts">
+import { checkLogin } from "@/utils/auth.uts";
+
+	onShow(() : void => {
+		// 检查登录状态
+		if (!checkLogin()) {
+			return
+		}
+		// TabBar 点击后立即跳转到独立客服页面
+		uni.navigateTo({
+			url: '/pages/service/service'
+		})
+	})
+</script>
+
+<style>
+	.container {
+		flex: 1;
+		background-color: #F5F0E8;
+	
+}
+</style>
