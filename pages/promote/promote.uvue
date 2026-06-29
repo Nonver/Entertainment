@@ -28,7 +28,7 @@
 
 <script setup lang="uts">
 	// 推广链接（占位，后续替换为真实接口）
-	const promoteLink = ref<string>('https://h5.gxjujing.com/')
+	const promoteLink = ref<string>('http://localhost:8080/')
 
 	// 返回上一页
 	const goBack = () : void => {

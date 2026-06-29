@@ -8,8 +8,8 @@ import { getToken, clearToken } from "@/utils/auth.uts"
 // API 基础地址（根据环境切换）
 // const BASE_URL = 'http://localhost:8000/api/admin'
 
-const BASE_URL = 'http://192.168.0.26:8000/api/admin'
-// const BASE_URL = '//api.gxjujing.com/api/admin'
+const BASE_URL = 'http://localhost:8000/api/admin'
+// const BASE_URL = '//localhost:8000/api/admin'
 
 
 // 请求配置类型
